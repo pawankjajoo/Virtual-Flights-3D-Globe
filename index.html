@@ -619,50 +619,43 @@
   // ═════════════════════════════════════════════════════════════════════
   async function initMap() {
     try {
-      // Fetch and modify style
-      const styleResponse = await fetch(CONFIG.STYLE_URL);
-      const style = await styleResponse.json();
-
-      // Inject vertical-perspective projection and sky atmosphere
-      style.projection = { type: 'vertical-perspective' };
-
-      // Atmosphere for globe view
-      style.sky = {
-        'atmosphere-blend': [
-          'interpolate', ['linear'], ['zoom'],
-          0, 1, 5, 1, 7, 0
-        ]
-      };
-
-      // Create map with modified style
+      // Create map with Carto style URL (MapLibre handles CORS for style loading)
       STATE.map = new maplibregl.Map({
         container: 'map',
-        style: style,
+        style: CONFIG.STYLE_URL,
         center: [0, 20],
-        zoom: 2.5,
-        pitch: 45,
+        zoom: 1.8,
+        pitch: 30,
         bearing: 0,
+        renderWorldCopies: false,
         antialias: true
       });
 
-      // Wait for style to fully load before adding sources/layers
+      // Wait for style to fully load
       await new Promise((resolve) => {
         let resolved = false;
         const done = () => { if (!resolved) { resolved = true; resolve(); } };
-
-        // style.load is the ONLY reliable event for source/layer creation
-        if (STATE.map.isStyleLoaded()) {
-          done();
-        } else {
-          STATE.map.once('style.load', done);
-          // Ultimate fallback
-          setTimeout(done, 8000);
-        }
+        if (STATE.map.isStyleLoaded()) { done(); }
+        else { STATE.map.once('style.load', done); }
+        setTimeout(done, 10000); // ultimate fallback
       });
+
+      // Now set globe projection and sky atmosphere AFTER style is loaded
+      STATE.map.setProjection({ type: 'vertical-perspective' });
+
+      // Try to add sky atmosphere (may not work with all styles)
+      try {
+        STATE.map.setSky({
+          'atmosphere-blend': [
+            'interpolate', ['linear'], ['zoom'],
+            0, 1, 5, 1, 7, 0
+          ]
+        });
+      } catch(e) { console.warn('Sky not supported:', e); }
 
       STATE.mapReady = true;
 
-      // Initialize sources and layers (AFTER style is loaded)
+      // Initialize sources and layers
       initSources();
       initLayers();
       initControls();
@@ -671,17 +664,36 @@
       fetchVATSIMData();
       setInterval(fetchVATSIMData, CONFIG.POLL_INTERVAL);
 
-      // Hide loader after first render
+      // Hide loader
       const hideLoader = () => {
         setTimeout(() => {
           document.getElementById('loader').classList.add('fade');
         }, 500);
       };
       STATE.map.once('idle', hideLoader);
-      setTimeout(hideLoader, 4000); // fallback
+      setTimeout(hideLoader, 4000);
 
     } catch (error) {
       console.error('Map initialization error:', error);
+      // Fallback: try without globe projection
+      try {
+        STATE.map = new maplibregl.Map({
+          container: 'map',
+          style: CONFIG.STYLE_URL,
+          center: [0, 20],
+          zoom: 2,
+          pitch: 30
+        });
+        STATE.map.once('style.load', () => {
+          STATE.mapReady = true;
+          initSources();
+          initLayers();
+          initControls();
+          fetchVATSIMData();
+          setInterval(fetchVATSIMData, CONFIG.POLL_INTERVAL);
+          document.getElementById('loader').classList.add('fade');
+        });
+      } catch(e2) { console.error('Fallback also failed:', e2); }
     }
   }
 
@@ -893,10 +905,13 @@
       STATE.controllers = data.controllers || [];
       STATE.lastUpdate = new Date();
 
-      // Update UI
-      document.getElementById('nPilots').textContent = STATE.pilots.length;
-      document.getElementById('nATC').textContent = STATE.controllers.length;
-      document.getElementById('updateTime').textContent = STATE.lastUpdate.toLocaleTimeString();
+      // Update UI (guard against missing elements)
+      const nPilots = document.getElementById('nPilots');
+      const nATC = document.getElementById('nATC');
+      const updateTime = document.getElementById('updateTime');
+      if (nPilots) nPilots.textContent = STATE.pilots.length;
+      if (nATC) nATC.textContent = STATE.controllers.length;
+      if (updateTime) updateTime.textContent = STATE.lastUpdate.toLocaleTimeString();
 
       // Render data
       renderPilots();
@@ -906,9 +921,8 @@
 
     } catch (error) {
       console.error('VATSIM fetch error:', error);
-      document.getElementById('updateStatus').textContent = '◯';
-      document.querySelector('.upd').classList.remove('ok');
-      document.querySelector('.upd').classList.add('stale');
+      const upd = document.querySelector('.upd');
+      if (upd) { upd.classList.remove('ok'); upd.classList.add('stale'); }
     }
   }
 
