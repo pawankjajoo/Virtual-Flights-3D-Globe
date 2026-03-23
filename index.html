@@ -14,8 +14,8 @@
   <meta name="twitter:title" content="Virtual Flights Map 3D Globe | Pushstart Simulators">
 
   <!-- MapLibre GL JS v4.7.1 - Free, open-source, no API key needed -->
-  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
-  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@5.21.0/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@5.21.0/dist/maplibre-gl.js"></script>
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=SF+Mono:wght@400;500;600;700&display=swap');
@@ -577,7 +577,7 @@
       zoom: 2,
       pitch: 45,
       bearing: 0,
-      projection: { type: 'globe' }, // Enable globe projection
+      projection: 'globe', // Enable globe projection
       antialias: true
     });
 
