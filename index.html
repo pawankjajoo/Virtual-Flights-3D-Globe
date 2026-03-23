@@ -575,7 +575,7 @@
       .then(r => r.json())
       .then(baseStyle => {
         // Inject globe projection and atmosphere into the style
-        baseStyle.projection = { type: 'globe' };
+        baseStyle.projection = { type: 'vertical-perspective' };
         baseStyle.sky = {
           'atmosphere-blend': [
             'interpolate', ['linear'], ['zoom'],
@@ -634,7 +634,7 @@
           antialias: true
         });
         map.once('idle', () => {
-          map.setProjection({type: 'globe'});
+          map.setProjection({type: 'vertical-perspective'});
           fadeLoader();
           setupControls();
           setupEventListeners();
