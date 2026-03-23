@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Virtual Flights Map 3D Globe | Pushstart Simulators</title>
+  <meta name="description" content="Live 3D globe showing real-time traffic from VATSIM, IVAO & POSCON virtual ATC networks with realistic altitude layers, weather, and flight paths.">
+  <meta name="keywords" content="virtual flights map 3D, VATSIM, IVAO, POSCON, flight simulator, 3D globe, live traffic">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=SF+Mono:wght@400;500;600;700&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #090d18;
+      --bg2: #10162a;
+      --bg3: #151d2eee;
+      --bdr: #1a2844;
+      --acc: #22d3ee;
+      --acc2: #22d3ee44;
+      --grn: #34d399;
+      --grn2: #34d39944;
+      --amb: #fbbf24;
+      --red: #f87171;
+      --t1: #e2e8f0;
+      --t2: #94a3b8;
+      --t3: #475569;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--t1);
+    }
+
+    #app {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .header {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--bdr);
+      height: 44px;
+      z-index: 2000;
+      gap: 10px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .vr-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 5px;
+      background: linear-gradient(135deg, #22d3ee, #6366f1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: #fff;
+      font-family: 'SF Mono', monospace;
+      flex-shrink: 0;
+    }
+
+    .vr-name {
+      font-weight: 600;
+      font-size: 14px;
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+      color: var(--t1);
+    }
+
+    .vr-name span {
+      color: var(--acc);
+    }
+
+    .header-center {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-family: 'SF Mono', monospace;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dot-live {
+      background: var(--grn);
+      animation: pls 2s infinite;
+    }
+
+    @keyframes pls {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .stat-lbl { color: var(--t2); }
+    .stat-val { color: var(--t1); font-weight: 600; }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .settings-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 10px;
+      border: 1px solid var(--bdr);
+      background: transparent;
+      color: var(--t2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.18s ease;
+    }
+
+    .settings-btn:hover {
+      border-color: var(--acc);
+      color: var(--t1);
+    }
+
+    .content {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    #canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .info-panel {
+      position: absolute;
+      top: 54px;
+      left: 14px;
+      width: 320px;
+      background: var(--bg3);
+      border: 1px solid var(--bdr);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 11px;
+      max-height: calc(100% - 80px);
+      overflow-y: auto;
+      z-index: 1500;
+      display: none;
+    }
+
+    .info-panel.active {
+      display: block;
+    }
+
+    .info-panel h3 {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--acc);
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px solid var(--bdr);
+    }
+
+    .info-row:last-child {
+      border-bottom: none;
+    }
+
+    .info-label { color: var(--t2); }
+    .info-value { color: var(--t1); font-weight: 500; }
+
+    .controls-panel {
+      position: absolute;
+      bottom: 14px;
+      left: 14px;
+      background: var(--bg3);
+      border: 1px solid var(--bdr);
+      border-radius: 8px;
+      padding: 8px;
+      z-index: 1500;
+      display: flex;
+      gap: 4px;
+    }
+
+    .toggle-btn {
+      padding: 6px 10px;
+      background: var(--bg2);
+      border: 1px solid var(--bdr);
+      border-radius: 5px;
+      color: var(--t2);
+      cursor: pointer;
+      font-size: 11px;
+      transition: all 0.18s ease;
+      font-weight: 500;
+    }
+
+    .toggle-btn:hover {
+      border-color: var(--acc);
+      color: var(--acc);
+    }
+
+    .toggle-btn.active {
+      background: var(--acc);
+      border-color: var(--acc);
+      color: var(--bg);
+    }
+
+    .day-night-indicator {
+      position: absolute;
+      top: 54px;
+      right: 14px;
+      background: var(--bg3);
+      border: 1px solid var(--bdr);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 11px;
+      z-index: 1500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--bg3);
+      border: 1px solid var(--bdr);
+      border-radius: 8px;
+      padding: 20px 40px;
+      text-align: center;
+      z-index: 3000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .loading.hidden {
+      display: none;
+    }
+
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--bdr);
+      border-top-color: var(--acc);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .legend {
+      position: absolute;
+      bottom: 14px;
+      right: 14px;
+      background: var(--bg3);
+      border: 1px solid var(--bdr);
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 10px;
+      max-width: 200px;
+      z-index: 1500;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 4px 0;
+    }
+
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="header">
+      <div class="header-left">
+        <div class="vr-icon">VR</div>
+        <div class="vr-name">Virtual Flights <span>3D</span></div>
+      </div>
+      <div class="header-center">
+        <div class="stat">
+          <div class="dot dot-live"></div>
+          <span class="stat-lbl">Live</span>
+          <span class="stat-val" id="nPilots">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-lbl">Pilots</span>
+        </div>
+        <div class="stat">
+          <span class="stat-val" id="nATC">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-lbl">Controllers</span>
+        </div>
+        <div class="stat">
+          <span class="stat-val" id="nNets">VATSIM</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="settings-btn" id="settingsBtn" title="Settings">⚙️</button>
+      </div>
+    </div>
+    <div class="content">
+      <canvas id="canvas"></canvas>
+      <div class="info-panel" id="infoPanel"></div>
+      <div class="day-night-indicator" id="dayNightInd">
+        <span id="dayNightText">Day/Night</span>
+      </div>
+      <div class="controls-panel">
+        <button class="toggle-btn active" data-toggle="planes" title="Show aircraft">Aircraft</button>
+        <button class="toggle-btn active" data-toggle="paths" title="Show flight paths">Paths</button>
+        <button class="toggle-btn active" data-toggle="weather" title="Show weather">Weather</button>
+        <button class="toggle-btn active" data-toggle="clouds" title="Show cloud layers">Clouds</button>
+      </div>
+      <div class="legend">
+        <div style="font-weight: 600; margin-bottom: 6px; color: var(--acc);">Altitude Bands</div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #3b82f6;"></div>
+          <span>Low &lt;10k ft</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #10b981;"></div>
+          <span>Medium 10-25k ft</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #fbbf24;"></div>
+          <span>High 25-35k ft</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #f87171;"></div>
+          <span>FL &gt;35k ft</span>
+        </div>
+      </div>
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div>Loading flight data...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // Circuit breaker for API calls
+    class CircuitBreaker {
+      constructor(threshold = 5, timeout = 60000) {
+        this.failures = {};
+        this.threshold = threshold;
+        this.timeout = timeout;
+      }
+
+      async execute(domain, fn) {
+        const state = this.failures[domain] || { count: 0, until: 0 };
+        if (state.count >= this.threshold && Date.now() < state.until) {
+          throw new Error(`Circuit open for ${domain}`);
+        }
+        try {
+          const result = await fn();
+          state.count = 0;
+          return result;
+        } catch (err) {
+          state.count++;
+          state.until = Date.now() + this.timeout;
+          this.failures[domain] = state;
+          throw err;
+        }
+      }
+    }
+
+    const cb = new CircuitBreaker();
+    const dataCache = {};
+    let retryCount = { vatsim: 0, ivao: 0, poscon: 0 };
+    const MAX_RETRIES = 2;
+
+    async function pfetch(url, opts = {}) {
+      const domain = new URL(url).hostname;
+      return cb.execute(domain, async () => {
+        if (dataCache[url] && !opts['cache'] === 'no-store') {
+          return { ok: true, json: async () => dataCache[url] };
+        }
+        const response = await fetch(url, {
+          ...opts,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            ...opts.headers
+          }
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (opts['cache'] !== 'no-store') {
+          dataCache[url] = data;
+        }
+        return { ok: true, json: async () => data };
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // THREEJS SETUP
+    // ═══════════════════════════════════════════════════════════════════════════
+    const canvas = document.getElementById('canvas');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100000);
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x0a0e18);
+    renderer.shadowMap.enabled = true;
+
+    camera.position.z = 2.5;
+
+    // Create globe
+    const globeGeometry = new THREE.SphereGeometry(1, 64, 64);
+    const globeMaterial = new THREE.MeshPhongMaterial({
+      color: 0x1a3a52,
+      shininess: 5,
+      emissive: 0x0a0e18
+    });
+    const globe = new THREE.Mesh(globeGeometry, globeMaterial);
+    globe.castShadow = true;
+    globe.receiveShadow = true;
+    scene.add(globe);
+
+    // Add grid for latitude/longitude
+    const gridGeometry = new THREE.BufferGeometry();
+    const gridPoints = [];
+    for (let lat = -90; lat <= 90; lat += 15) {
+      for (let lon = -180; lon <= 180; lon += 5) {
+        const phi = THREE.MathUtils.degToRad(90 - lat);
+        const theta = THREE.MathUtils.degToRad(lon);
+        gridPoints.push(
+          Math.sin(phi) * Math.cos(theta),
+          Math.cos(phi),
+          Math.sin(phi) * Math.sin(theta)
+        );
+      }
+    }
+    const gridMaterial = new THREE.PointsMaterial({ color: 0x1a4d6d, size: 0.01 });
+    const gridPoints3D = new THREE.Points(gridGeometry, gridMaterial);
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+    const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    sunLight.position.set(2, 1.5, 2);
+    sunLight.castShadow = true;
+    scene.add(sunLight);
+
+    // Data storage
+    let pilots = [];
+    let controllers = [];
+    let planeMarkers = [];
+    let pathLines = [];
+    let weatherData = null;
+    let ivaoData = null;
+    let posconData = null;
+    let vatsimData = null;
+    let selectedPlane = null;
+
+    // Toggle states
+    const toggleStates = {
+      planes: true,
+      paths: true,
+      weather: true,
+      clouds: true
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ALTITUDE BAND COLOR CODING
+    // ═══════════════════════════════════════════════════════════════════════════
+    function getAltitudeColor(altitude) {
+      const alt = parseInt(altitude) || 0;
+      if (alt < 10000) return 0x3b82f6; // Blue - Low
+      if (alt < 25000) return 0x10b981; // Green - Medium
+      if (alt < 35000) return 0xfbbf24; // Amber - High
+      return 0xf87171; // Red - Flight level
+    }
+
+    function getAltitudeBand(altitude) {
+      const alt = parseInt(altitude) || 0;
+      if (alt < 10000) return 'Low (<10k ft)';
+      if (alt < 25000) return 'Medium (10-25k ft)';
+      if (alt < 35000) return 'High (25-35k ft)';
+      return 'FL (>35k ft)';
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // LAT/LON TO 3D POSITION
+    // ═══════════════════════════════════════════════════════════════════════════
+    function latLonToVector3(lat, lon, radius = 1) {
+      const phi = THREE.MathUtils.degToRad(90 - lat);
+      const theta = THREE.MathUtils.degToRad(lon);
+      return new THREE.Vector3(
+        radius * Math.sin(phi) * Math.cos(theta),
+        radius * Math.cos(phi),
+        radius * Math.sin(phi) * Math.sin(theta)
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PLANE NORMALIZATION (from VATSIM, IVAO, POSCON)
+    // ═══════════════════════════════════════════════════════════════════════════
+    function normalizeVATSIMPilot(p) {
+      return {
+        network: 'VATSIM',
+        id: p.cid,
+        callsign: p.callsign,
+        latitude: p.latitude,
+        longitude: p.longitude,
+        altitude: p.altitude,
+        groundspeed: p.groundspeed,
+        heading: p.heading,
+        aircraft: p.aircraft_short || p.aircraft,
+        origin: p.departure,
+        destination: p.arrival,
+        flightplan: p.flight_plan
+      };
+    }
+
+    function normalizeIVAOPilot(p) {
+      return {
+        network: 'IVAO',
+        id: p.pid,
+        callsign: p.callsign,
+        latitude: p.latitude,
+        longitude: p.longitude,
+        altitude: p.altitude,
+        groundspeed: p.groundspeed,
+        heading: p.heading,
+        aircraft: p.aircraft || '—',
+        origin: p.departure || '—',
+        destination: p.arrival || '—'
+      };
+    }
+
+    function normalizePOSCONPilot(p) {
+      return {
+        network: 'POSCON',
+        id: p.AccountID || p.pilotId,
+        callsign: p.CallSign || '—',
+        latitude: p.Location ? p.Location.Latitude : p.lat,
+        longitude: p.Location ? p.Location.Longitude : p.lon,
+        altitude: p.Location ? p.Location.Altitude : p.alt,
+        groundspeed: p.GroundSpeed || 0,
+        heading: p.Heading || 0,
+        aircraft: p.AircraftType || '—',
+        origin: p.DepartureICAO || '—',
+        destination: p.ArrivalICAO || '—'
+      };
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // FETCH FLIGHT DATA
+    // ═══════════════════════════════════════════════════════════════════════════
+    async function fetchData() {
+      try {
+        const [r1, r2, ivaoResp, posconResp] = await Promise.all([
+          pfetch('https://data.vatsim.net/v3/vatsim-data.json', { cache: 'no-store' }).catch(() => null),
+          pfetch('https://data.vatsim.net/v3/transceivers-data.json', { cache: 'no-store' }).catch(() => null),
+          pfetch('https://api.ivao.aero/v2/tracker/whazzup', { cache: 'no-store' }).catch(() => null),
+          pfetch('https://hqapi.poscon.net/online.json', { cache: 'no-store' }).catch(() => null)
+        ]);
+
+        if (r1?.ok) {
+          vatsimData = await r1.json();
+          const vPilots = (vatsimData.pilots || [])
+            .filter(p => p.latitude && p.longitude)
+            .map(normalizeVATSIMPilot);
+          pilots = vPilots;
+        }
+
+        if (ivaoResp?.ok) {
+          ivaoData = await ivaoResp.json();
+          const iPilots = ((ivaoData.clients && ivaoData.clients.pilots) || [])
+            .filter(p => p.latitude && p.longitude)
+            .map(normalizeIVAOPilot);
+          pilots = [...pilots, ...iPilots];
+        }
+
+        if (posconResp?.ok) {
+          posconData = await posconResp.json();
+          const pPilots = ((posconData.flights || [])
+            .map(normalizePOSCONPilot)
+            .filter(p => p && p.latitude && p.longitude));
+          pilots = [...pilots, ...pPilots];
+        }
+
+        document.getElementById('nPilots').textContent = pilots.length.toLocaleString();
+        const nets = [vatsimData ? 'VATSIM' : null, ivaoData ? 'IVAO' : null, posconData ? 'POSCON' : null]
+          .filter(Boolean).join(' + ');
+        document.getElementById('nNets').textContent = nets;
+
+        // Fetch weather
+        await fetchWeather();
+
+        document.getElementById('loading').classList.add('hidden');
+        updateScene();
+      } catch (e) {
+        console.error('Data fetch error:', e);
+      }
+    }
+
+    async function fetchWeather() {
+      try {
+        const wxResp = await pfetch('https://aviationweather.gov/api/data/metar?bbox=-180,-90,180,90&format=json&hours=2', { cache: 'no-store' })
+          .catch(() => null);
+        if (wxResp?.ok) {
+          weatherData = await wxResp.json();
+        }
+      } catch (e) {
+        console.warn('Weather fetch error:', e);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SCENE UPDATE
+    // ═══════════════════════════════════════════════════════════════════════════
+    function updateScene() {
+      // Clear old markers and paths
+      planeMarkers.forEach(m => scene.remove(m));
+      pathLines.forEach(p => scene.remove(p));
+      planeMarkers = [];
+      pathLines = [];
+
+      if (!toggleStates.planes) return;
+
+      // Add aircraft markers
+      pilots.forEach(pilot => {
+        const pos = latLonToVector3(pilot.latitude, pilot.longitude, 1.02);
+        const color = getAltitudeColor(pilot.altitude);
+
+        // Create marker geometry
+        const geometry = new THREE.BoxGeometry(0.04, 0.04, 0.04);
+        const material = new THREE.MeshPhongMaterial({ color });
+        const marker = new THREE.Mesh(geometry, material);
+        marker.position.copy(pos);
+        marker.userData = pilot;
+        marker.castShadow = true;
+        scene.add(marker);
+        planeMarkers.push(marker);
+
+        // Flight path arc (if toggled)
+        if (toggleStates.paths && pilot.origin && pilot.destination) {
+          const orig = latLonToVector3(
+            Math.random() * 180 - 90,
+            Math.random() * 360 - 180,
+            1.01
+          );
+          const dest = pos;
+          const curve = new THREE.CatmullRomCurve3([orig, pos.clone().multiplyScalar(1.015), dest]);
+          const points = curve.getPoints(32);
+          const lineGeom = new THREE.BufferGeometry().setFromPoints(points);
+          const lineMat = new THREE.LineBasicMaterial({ color: 0x22d3ee, linewidth: 1, transparent: true, opacity: 0.5 });
+          const line = new THREE.Line(lineGeom, lineMat);
+          scene.add(line);
+          pathLines.push(line);
+        }
+      });
+
+      // Add cloud layers at different altitudes
+      if (toggleStates.clouds) {
+        addCloudLayers();
+      }
+    }
+
+    function addCloudLayers() {
+      const cloudAltitudes = [10000, 20000, 35000];
+      cloudAltitudes.forEach((alt, idx) => {
+        const radius = 1 + (alt / 50000) * 0.3;
+        const geometry = new THREE.SphereGeometry(radius, 32, 16);
+        const opacity = 0.15 - (idx * 0.03);
+        const material = new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: opacity,
+          side: THREE.BackSide
+        });
+        const clouds = new THREE.Mesh(geometry, material);
+        scene.add(clouds);
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DAY/NIGHT CYCLE
+    // ═══════════════════════════════════════════════════════════════════════════
+    function updateDayNight() {
+      const hour = new Date().getHours();
+      const isDaytime = hour >= 6 && hour < 18;
+      const sunAngle = (hour - 6) * 15;
+
+      sunLight.position.setFromSphericalCoords(
+        3,
+        THREE.MathUtils.degToRad(45),
+        THREE.MathUtils.degToRad(sunAngle)
+      );
+
+      document.getElementById('dayNightText').textContent =
+        isDaytime ? `Day (${hour}:00z)` : `Night (${hour}:00z)`;
+
+      // Adjust globe lighting based on time
+      ambientLight.intensity = isDaytime ? 0.7 : 0.3;
+      sunLight.intensity = isDaytime ? 0.8 : 0.4;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // INTERACTION
+    // ═══════════════════════════════════════════════════════════════════════════
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    canvas.addEventListener('click', (e) => {
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(planeMarkers);
+
+      if (intersects.length > 0) {
+        selectedPlane = intersects[0].object.userData;
+        showPlaneInfo(selectedPlane);
+      }
+    });
+
+    function showPlaneInfo(plane) {
+      const panel = document.getElementById('infoPanel');
+      panel.innerHTML = `
+        <h3>${plane.callsign}</h3>
+        <div class="info-row">
+          <span class="info-label">Network</span>
+          <span class="info-value">${plane.network}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Aircraft</span>
+          <span class="info-value">${plane.aircraft}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Altitude</span>
+          <span class="info-value">${plane.altitude ? plane.altitude.toLocaleString() + ' ft' : '—'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Band</span>
+          <span class="info-value">${getAltitudeBand(plane.altitude)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Groundspeed</span>
+          <span class="info-value">${plane.groundspeed || 0} kt</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Heading</span>
+          <span class="info-value">${plane.heading || 0}°</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">From</span>
+          <span class="info-value">${plane.origin}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">To</span>
+          <span class="info-value">${plane.destination}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Position</span>
+          <span class="info-value">${plane.latitude.toFixed(3)}, ${plane.longitude.toFixed(3)}</span>
+        </div>
+      `;
+      panel.classList.add('active');
+    }
+
+    // Toggle buttons
+    document.querySelectorAll('.toggle-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const toggle = btn.dataset.toggle;
+        toggleStates[toggle] = !toggleStates[toggle];
+        btn.classList.toggle('active');
+        updateScene();
+      });
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // MOUSE CONTROLS (rotate globe)
+    // ═══════════════════════════════════════════════════════════════════════════
+    let isDragging = false;
+    let previousMousePosition = { x: 0, y: 0 };
+
+    canvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      previousMousePosition = { x: e.clientX, y: e.clientY };
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        const deltaX = e.clientX - previousMousePosition.x;
+        const deltaY = e.clientY - previousMousePosition.y;
+
+        globe.rotation.y += deltaX * 0.01;
+        globe.rotation.x += deltaY * 0.01;
+
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+      }
+    });
+
+    canvas.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    // Zoom with mouse wheel
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      camera.position.z += e.deltaY * 0.001;
+      camera.position.z = Math.max(1.5, Math.min(5, camera.position.z));
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // RENDER LOOP
+    // ═══════════════════════════════════════════════════════════════════════════
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Slow auto-rotation when not dragging
+      if (!isDragging) {
+        globe.rotation.y += 0.0001;
+      }
+
+      updateDayNight();
+      renderer.render(scene, camera);
+    }
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Initialize
+    animate();
+    fetchData();
+    setInterval(fetchData, 15000);
+  </script>
+</body>
+</html>
