@@ -607,24 +607,36 @@
             `${coords.lat.toFixed(2)}°, ${coords.lng.toFixed(2)}°`;
         });
 
-        // Use 'idle' event as reliable fallback (fires after all tiles rendered)
-        map.once('idle', () => {
+        // Boot the app once map is ready
+        let booted = false;
+        function bootApp() {
+          if (booted) return;
+          booted = true;
           fadeLoader();
           setupControls();
           setupEventListeners();
           fetchVATSIMData();
           startAutoRotate();
           pollTimer = setInterval(fetchVATSIMData, CONFIG.pollInterval);
-
-          // Show welcome popup on first load
           setTimeout(() => {
             document.getElementById('welcomePopup').classList.add('show');
           }, 1200);
+        }
+
+        // Try multiple events - whichever fires first wins
+        map.once('idle', bootApp);
+        map.once('load', bootApp);
+        map.on('render', function onRender() {
+          // Once we get a render frame, the map is visually ready
+          map.off('render', onRender);
+          setTimeout(bootApp, 500); // small delay after first render
         });
+        // Ultimate fallback timeout
+        setTimeout(bootApp, 6000);
       })
       .catch(err => {
         console.error('Failed to load map style:', err);
-        // Fallback: use style URL directly
+        // Fallback: use style URL directly with timeout boot
         map = new maplibregl.Map({
           container: 'map',
           style: CONFIG.mapStyle,
@@ -633,7 +645,10 @@
           pitch: 30,
           antialias: true
         });
-        map.once('idle', () => {
+        let booted2 = false;
+        function bootFallback() {
+          if (booted2) return;
+          booted2 = true;
           map.setProjection({type: 'vertical-perspective'});
           fadeLoader();
           setupControls();
@@ -641,7 +656,10 @@
           fetchVATSIMData();
           startAutoRotate();
           pollTimer = setInterval(fetchVATSIMData, CONFIG.pollInterval);
-        });
+        }
+        map.once('idle', bootFallback);
+        map.once('load', bootFallback);
+        setTimeout(bootFallback, 6000);
       });
   }
 
