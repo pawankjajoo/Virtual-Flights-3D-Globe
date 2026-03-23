@@ -1,11 +1,11 @@
 # Virtual Flights Map 3D Globe
 
-A smooth, beautiful 3D globe visualization of real-time virtual flight traffic from VATSIM, IVAO, and POSCON networks, powered by Mapbox GL JS with native globe projection.
+A smooth, beautiful 3D globe visualization of real-time virtual flight traffic from VATSIM networks, powered by **MapLibre GL JS** (free, open-source, no API key needed) with native globe projection.
 
 ## Features
 
-- **3D Rotating Globe**: Smooth Mapbox GL JS globe projection with realistic geography
-- **Multi-Network Support**: Displays pilots from VATSIM, IVAO, and POSCON simultaneously
+- **3D Rotating Globe**: Smooth MapLibre GL JS v4.7.1 globe projection with realistic geography
+- **Real-Time VATSIM**: Live display of all pilots and controllers from VATSIM network
 - **Aircraft Markers**: Colored by aircraft type (Heavy, Medium, Light Jet, General Aviation)
 - **ATC Coverage**: Toggle circles showing active ATC stations worldwide
 - **Aircraft Search**: Find any flight by callsign or search ATC frequencies
@@ -25,12 +25,13 @@ A smooth, beautiful 3D globe visualization of real-time virtual flight traffic f
 
 ## Technical Stack
 
-- **Mapbox GL JS v3.3.0** with native globe projection
-- **Dark mode map style** (mapbox://styles/mapbox/dark-v11)
-- **Custom aircraft and ATC markers** using SVG and DOM elements
-- **Real-time API data fetching** with error handling
+- **MapLibre GL JS v4.7.1** with native globe projection (free, open-source, no API key required)
+- **Carto dark-matter vector tiles** (free map style, no API key)
+- **Custom aircraft and ATC markers** using GeoJSON features
+- **Real-time API data fetching** with CORS proxy for VATSIM data
 - **Responsive design** with CSS Grid and Flexbox
 - **Dark cockpit theme** with cyan accents and smooth animations
+- **100% client-side rendering** - no backend required
 
 ## Usage
 
@@ -84,11 +85,13 @@ Requires:
 
 ## File Details
 
-- `index.html`: Single self-contained file with all HTML, CSS, and JavaScript (1,352 lines)
-- Embedded Mapbox GL JS library via CDN
+- `index.html`: Single self-contained file with all HTML, CSS, and JavaScript (932 lines)
+- MapLibre GL JS v4.7.1 loaded from CDN (no API key needed)
+- Carto vector tiles (free, no API key needed)
 - No external dependencies or build process required
 - Ready to deploy to any static web server
+- Works by just opening the HTML file in a browser
 
 ---
 
-Developed by Pawan K Jajoo | Built with Mapbox GL JS
+Developed by Pawan K Jajoo | Built with MapLibre GL JS

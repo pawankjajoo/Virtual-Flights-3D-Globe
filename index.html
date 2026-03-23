@@ -1,532 +1,364 @@
 <!DOCTYPE html>
+<!-- Crafted by Pawan K Jajoo -->
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Virtual Flights Map 3D Globe | Pushstart Simulators</title>
-<meta name="description" content="Live 3D globe showing real-time traffic from VATSIM, IVAO & POSCON virtual ATC networks. Experience the world with smooth 3D rendering.">
-<meta name="keywords" content="virtual flights map, 3D globe, VATSIM, IVAO, POSCON, flight simulator, Mapbox GL, live traffic">
-<meta property="og:title" content="Virtual Flights Map 3D Globe | Pushstart Simulators">
-<meta property="og:description" content="Live 3D globe showing real-time traffic from VATSIM, IVAO & POSCON.">
-<meta property="og:type" content="website">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Virtual Flights Map 3D Globe | Pushstart Simulators">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Virtual Flights Map 3D Globe | Pushstart Simulators</title>
+  <meta name="description" content="Live 3D globe showing real-time traffic from VATSIM. Experience the world with smooth 3D rendering powered by MapLibre GL JS.">
+  <meta name="keywords" content="virtual flights map, 3D globe, VATSIM, flight simulator, MapLibre GL, live traffic">
+  <meta property="og:title" content="Virtual Flights Map 3D Globe | Pushstart Simulators">
+  <meta property="og:description" content="Live 3D globe showing real-time traffic from VATSIM with smooth 3D rendering.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Virtual Flights Map 3D Globe | Pushstart Simulators">
 
-<!-- Mapbox GL JS -->
-<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+  <!-- MapLibre GL JS v4.7.1 - Free, open-source, no API key needed -->
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=SF+Mono:wght@400;500;600;700&display=swap');
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=SF+Mono:wght@400;500;600;700&display=swap');
 
-  *{margin:0;padding:0;box-sizing:border-box}
+    *{margin:0;padding:0;box-sizing:border-box}
 
-  /* Cockpit-style dark palette */
-  :root{
-    --bg:#090d18;--bg2:#10162a;--bg3:#151d2eee;--bg3s:#151d2e;
-    --bdr:#1a2844;--acc:#22d3ee;--acc2:#22d3ee44;
-    --grn:#34d399;--grn2:#34d39944;--amb:#fbbf24;--red:#f87171;
-    --t1:#e2e8f0;--t2:#94a3b8;--t3:#475569;
-  }
-
-  html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--t1)}
-
-  #app{width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden}
-
-  /* ═════ HEADER ═════ */
-  .header{
-    flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
-    padding:0 14px;background:var(--bg2);border-bottom:1px solid var(--bdr);
-    height:44px;z-index:2000;gap:10px;
-  }
-
-  .header-left{display:flex;align-items:center;gap:10px;flex-shrink:0}
-
-  .ps-logo{height:18px;width:auto;opacity:.92;flex-shrink:0;cursor:pointer;transition:opacity .2s}
-  .ps-logo:hover{opacity:1}
-
-  .divider{width:1px;height:22px;background:var(--bdr);flex-shrink:0}
-
-  .vr-brand{display:flex;align-items:center;gap:7px;flex-shrink:0;cursor:pointer;text-decoration:none}
-  .vr-icon{
-    width:24px;height:24px;border-radius:5px;
-    background:linear-gradient(135deg,#22d3ee,#6366f1);
-    display:flex;align-items:center;justify-content:center;
-    font-size:10px;font-weight:700;color:#fff;font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;
-    flex-shrink:0;
-  }
-  .vr-name{font-weight:600;font-size:14px;letter-spacing:-.02em;white-space:nowrap;color:var(--t1)}
-  .vr-name span{color:var(--acc)}
-
-  .header-center{flex:1;display:flex;align-items:center;justify-content:center;gap:14px;min-width:0}
-
-  .stat{display:flex;align-items:center;gap:5px;font-size:11px;font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;white-space:nowrap}
-  .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
-  .dot-p{background:var(--acc);box-shadow:0 0 6px var(--acc2)}
-  .dot-a{background:var(--grn);box-shadow:0 0 6px var(--grn2)}
-  .dot-live{background:var(--grn);animation:pls 2s infinite}
-  @keyframes pls{0%,100%{opacity:1}50%{opacity:.3}}
-  .stat-lbl{color:var(--t2)}
-  .stat-val{color:var(--t1);font-weight:600}
-
-  .stat-lbl::before{content:attr(data-full)}
-  @media(max-width:799px){.stat-lbl::before{content:attr(data-short)}}
-  @media(max-width:479px){.stat-lbl{display:none}.stat{gap:3px;font-size:10px}}
-
-  .header-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
-
-  .settings-btn{
-    width:30px;height:30px;border-radius:10px;border:1px solid var(--bdr);
-    background:transparent;color:var(--t2);cursor:pointer;
-    display:flex;align-items:center;justify-content:center;transition:all .18s ease;
-  }
-  .settings-btn:hover{border-color:var(--acc);color:var(--t1)}
-
-  /* ═════ CONTENT ═════ */
-  .content{flex:1;position:relative;overflow:hidden;min-height:0}
-
-  #map{width:100%;height:100%;background:var(--bg)}
-
-  /* ─ SEARCH OVERLAY ─ */
-  .search-box{
-    position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:1500;
-    width:min(340px,90vw);
-  }
-  .search-input{
-    width:100%;padding:8px 12px 8px 34px;background:var(--bg3s);
-    border:1px solid var(--bdr);border-radius:12px;color:var(--t1);
-    font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;font-size:12px;outline:none;
-    backdrop-filter:blur(12px);transition:border-color .2s;
-  }
-  .search-input::placeholder{color:var(--t3)}
-  .search-input:focus{border-color:var(--acc)}
-  .search-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--t3);pointer-events:none}
-
-  .search-results{
-    margin-top:4px;background:var(--bg3s);border:1px solid var(--bdr);
-    border-radius:12px;max-height:240px;overflow-y:auto;display:none;
-    backdrop-filter:blur(12px);
-  }
-  .search-results.open{display:block}
-  .sr-item{padding:8px 12px;cursor:pointer;border-bottom:1px solid #1a2540;transition:background .12s;font-size:11px}
-  .sr-item:hover{background:#1a2844}
-  .sr-item:last-child{border-bottom:none}
-  .sr-cs{font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;font-weight:600;color:var(--acc)}
-  .sr-rt{color:var(--t2);font-size:10px;margin-top:2px}
-
-  /* ─ MAP CONTROLS ─ */
-  .map-ctrls{position:absolute;bottom:10px;right:10px;z-index:1200;display:flex;flex-direction:column;gap:5px;align-items:center}
-  .mbtn{
-    width:32px;height:32px;border-radius:10px;border:1px solid var(--bdr);
-    background:var(--bg3);color:var(--t2);cursor:pointer;
-    display:flex;align-items:center;justify-content:center;font-size:16px;
-    transition:all .18s ease;backdrop-filter:blur(10px);
-  }
-  .mbtn:hover{background:#1e2d45;color:var(--t1)}
-
-  /* ─ LAYER TOGGLES ─ */
-  .layer-sep{width:36px;height:1px;background:var(--bdr);margin:2px auto}
-  .ltgl{
-    width:44px;height:44px;border-radius:12px;border:1px solid var(--bdr);
-    background:var(--bg3);color:var(--t3);cursor:pointer;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-    font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;font-weight:600;font-size:8px;letter-spacing:.04em;
-    transition:all .18s ease;backdrop-filter:blur(10px);user-select:none;
-  }
-  .ltgl svg{flex-shrink:0;transition:stroke .18s}
-  .ltgl.on{
-    color:var(--t1);border-color:var(--acc);
-    box-shadow:0 0 10px rgba(34,211,238,.18),inset 0 0 8px rgba(34,211,238,.06);
-  }
-  .ltgl.on svg{stroke:var(--acc)}
-  .ltgl:hover{background:#1e2d45;color:var(--t1);border-color:var(--acc)}
-  .ltgl:active{transform:scale(.94)}
-
-  /* ─ AIRCRAFT LEGEND PANEL ─ */
-  .legend-panel{
-    position:absolute;bottom:108px;left:10px;z-index:1500;
-    background:var(--bg3s);border:1px solid var(--bdr);border-radius:14px;
-    padding:12px 16px 12px 14px;backdrop-filter:blur(14px);
-    display:none;min-width:195px;
-    box-shadow:0 8px 32px rgba(0,0,0,.45);
-  }
-  .legend-panel.open{display:block}
-  .legend-title{
-    font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;font-size:10px;font-weight:700;
-    color:var(--t2);letter-spacing:.08em;text-transform:uppercase;
-    margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--bdr);
-  }
-  .legend-row{
-    display:flex;align-items:center;gap:9px;padding:4px 0;
-  }
-  .legend-icon{flex-shrink:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center}
-  .legend-label{
-    font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;font-size:11px;font-weight:600;
-    line-height:1.15;
-  }
-  .legend-sub{
-    font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;font-size:9px;font-weight:400;
-    color:var(--t3);margin-top:1px;
-  }
-
-  .legend-toggle{
-    position:absolute;bottom:10px;left:10px;z-index:1400;
-    width:44px;height:44px;border-radius:12px;border:1px solid var(--bdr);
-    background:var(--bg3);color:var(--t3);cursor:pointer;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-    font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;font-weight:600;font-size:8px;letter-spacing:.04em;
-    transition:all .18s ease;backdrop-filter:blur(10px);user-select:none;
-  }
-  .legend-toggle:hover{background:#1e2d45;color:var(--t1);border-color:var(--acc)}
-  .legend-toggle:active{transform:scale(.94)}
-  .legend-toggle.on{
-    color:var(--t1);border-color:var(--acc);
-    box-shadow:0 0 10px rgba(34,211,238,.18),inset 0 0 8px rgba(34,211,238,.06);
-  }
-  .legend-toggle.on svg{stroke:var(--acc)}
-
-  /* ─ BOTTOM INFO DRAWER ─ */
-  .info-drawer{
-    position:absolute;bottom:0;left:0;right:0;
-    background:var(--bg3s);border-top:1px solid var(--bdr);
-    z-index:1600;
-    transform:translateY(100%);
-    transition:transform .28s cubic-bezier(.4,0,.2,1);
-    display:flex;flex-direction:column;
-    max-height:42vh;
-    pointer-events:none;
-  }
-  .info-drawer.open{transform:translateY(0);pointer-events:all}
-  .idr-handle{
-    display:flex;align-items:center;gap:10px;
-    padding:8px 14px 6px;border-bottom:1px solid var(--bdr);
-    flex-shrink:0;flex-wrap:wrap;
-  }
-  .idr-title-area{display:flex;align-items:center;gap:8px;flex-shrink:0}
-  .idr-callsign{
-    font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;font-weight:700;font-size:15px;color:var(--acc);
-  }
-  .idr-badge{
-    font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;font-size:10px;color:var(--t2);
-    background:var(--bg);padding:2px 7px;border-radius:4px;border:1px solid var(--bdr);
-  }
-  .idr-type{font-size:11px;color:var(--t3);font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace}
-  .idr-tabs{display:flex;gap:2px;flex:1;min-width:0}
-  .idr-tab{
-    padding:5px 12px;font-size:10px;font-weight:600;
-    font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;letter-spacing:.04em;
-    cursor:pointer;border:1px solid var(--bdr);border-radius:8px;
-    background:transparent;color:var(--t3);transition:all .15s;white-space:nowrap;
-  }
-  .idr-tab.active{background:var(--acc);color:#000;border-color:var(--acc)}
-  .idr-tab:hover:not(.active){color:var(--t1);border-color:var(--t2)}
-  .idr-close{
-    margin-left:auto;flex-shrink:0;
-    width:28px;height:28px;border:1px solid var(--bdr);background:var(--bg);
-    color:var(--t2);border-radius:8px;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;font-size:14px;
-    transition:all .15s;
-  }
-  .idr-close:hover{background:#1e2d45;color:var(--t1);border-color:var(--acc)}
-  .idr-body{
-    flex:1;overflow-y:auto;padding:10px 14px 12px;
-  }
-  .idr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px}
-  .idr-f{background:var(--bg);padding:7px 10px;border-radius:8px;border:1px solid var(--bdr)}
-  .idr-l{font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--t3);font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;margin-bottom:2px}
-  .idr-v{font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;font-size:12px;font-weight:600;color:var(--t1)}
-  .idr-route{
-    display:flex;align-items:center;gap:8px;margin-bottom:10px;
-    font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;flex-wrap:wrap;
-  }
-  .idr-apt{
-    font-size:14px;font-weight:700;color:var(--t1);
-    background:var(--bg);padding:4px 10px;border-radius:5px;border:1px solid var(--bdr);
-  }
-  .idr-arr{color:var(--acc);font-size:16px}
-  .idr-remarks{
-    padding:8px 12px;background:var(--bg);border:1px solid var(--bdr);
-    border-radius:10px;font-size:10px;color:var(--t2);
-    font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;line-height:1.6;white-space:pre-wrap;
-  }
-  .idr-atis{
-    padding:8px 12px;background:var(--bg);border:1px solid var(--bdr);
-    border-radius:10px;font-size:10px;color:var(--t2);
-    font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;line-height:1.7;white-space:pre-wrap;
-  }
-  .atis-voice-bar{
-    display:flex;align-items:center;gap:8px;margin-bottom:8px;
-  }
-  .atis-speak-btn{
-    display:flex;align-items:center;gap:6px;padding:6px 14px;
-    background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.3);
-    border-radius:10px;color:#22d3ee;font-size:11px;font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;
-    cursor:pointer;transition:all .2s;
-  }
-  .atis-speak-btn:hover{background:rgba(34,211,238,.22);border-color:rgba(34,211,238,.5)}
-  .atis-speak-btn.speaking{background:rgba(251,146,60,.15);border-color:rgba(251,146,60,.4);color:#fb923c}
-  .atis-speak-btn svg{width:16px;height:16px;fill:currentColor}
-  .atis-voice-label{font-size:9px;color:var(--t3);font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace}
-
-  .idr-prog{
-    display:flex;align-items:center;gap:10px;margin-bottom:10px;
-  }
-  .idr-prog-bar{
-    flex:1;height:4px;background:var(--bdr);border-radius:2px;overflow:hidden;
-  }
-  .idr-prog-fill{height:100%;background:linear-gradient(90deg,#34d399,#22d3ee);border-radius:2px;transition:width .4s}
-
-  /* ─ ATIS VOICE BUTTON ─ */
-  .atis-toggle{
-    position:absolute;bottom:58px;left:10px;z-index:1400;
-    width:44px;height:44px;border-radius:12px;border:1px solid var(--bdr);
-    background:var(--bg3);color:var(--t3);cursor:pointer;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
-    font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;font-weight:600;font-size:7.5px;letter-spacing:.04em;
-    transition:all .18s ease;backdrop-filter:blur(10px);user-select:none;
-  }
-  .atis-toggle:hover{background:#1e2d45;color:var(--t1);border-color:var(--acc)}
-  .atis-toggle:active{transform:scale(.94)}
-  .atis-toggle.speaking{
-    color:#fb923c;border-color:#fb923c;
-    box-shadow:0 0 12px rgba(251,146,60,.25),inset 0 0 8px rgba(251,146,60,.08);
-    animation:atis-pulse 1.5s ease-in-out infinite;
-  }
-  .atis-toggle svg{width:16px;height:16px;fill:currentColor}
-  @keyframes atis-pulse{0%,100%{opacity:1}50%{opacity:.6}}
-
-  /* ─ SIDE PANEL ─ */
-  .side-panel{
-    position:absolute;top:0;right:0;width:320px;max-width:90vw;height:100%;
-    background:var(--bg3s);border-left:1px solid var(--bdr);z-index:1500;
-    transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
-    display:flex;flex-direction:column;
-  }
-  .side-panel.open{transform:translateX(0)}
-  .sp-head{display:flex;align-items:center;justify-content:space-between;padding:12px;border-bottom:1px solid var(--bdr);flex-shrink:0}
-  .sp-title{font-weight:600;font-size:13px}
-  .sp-close{
-    width:28px;height:28px;border:none;background:var(--bg);color:var(--t2);
-    border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;
-    font-size:15px;transition:all .15s;
-  }
-  .sp-close:hover{background:#1e2d45;color:var(--t1)}
-  .sp-tabs{display:flex;border-bottom:1px solid var(--bdr);flex-shrink:0}
-  .sp-tab{
-    flex:1;padding:8px;text-align:center;font-size:11px;font-weight:500;
-    cursor:pointer;border:none;background:transparent;color:var(--t3);
-    transition:all .15s;border-bottom:2px solid transparent;
-  }
-  .sp-tab.active{color:var(--acc);border-bottom-color:var(--acc)}
-  .sp-list{flex:1;overflow-y:auto;padding:8px}
-  .sp-item{
-    padding:10px 12px;background:var(--bg);border:1px solid var(--bdr);
-    border-radius:8px;margin-bottom:6px;cursor:pointer;transition:all .15s;
-  }
-  .sp-item:hover{border-color:var(--acc);background:#1a2844}
-  .sp-call{font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;font-weight:600;color:var(--acc);font-size:12px}
-  .sp-info{font-size:10px;color:var(--t2);margin-top:4px}
-
-  /* ─ WELCOME POPUP ─ */
-  .welcome-overlay{
-    position:fixed;inset:0;z-index:9999;
-    background:rgba(0,0,0,.65);backdrop-filter:blur(6px);
-    display:flex;align-items:center;justify-content:center;
-    opacity:0;transition:opacity .3s;pointer-events:none;
-  }
-  .welcome-overlay.show{opacity:1;pointer-events:all}
-  .welcome-box{
-    background:var(--bg3);border:1px solid var(--bdr);border-radius:18px;
-    padding:26px 30px 22px;max-width:420px;width:90%;
-    box-shadow:0 20px 60px rgba(0,0,0,.6);
-    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
-  }
-  .welcome-box h2{
-    margin:0 0 4px;font-size:15px;color:var(--acc);font-weight:700;
-    letter-spacing:.04em;text-align:center;
-  }
-  .welcome-box .welcome-sub{
-    font-size:10px;color:var(--t3);margin-bottom:14px;text-align:center;
-  }
-  .welcome-box h3{
-    margin:12px 0 4px;font-size:10px;color:var(--t2);
-    text-transform:uppercase;letter-spacing:.08em;font-weight:700;
-  }
-  .welcome-box p{
-    margin:0 0 6px;font-size:10.5px;color:var(--t2);line-height:1.6;
-  }
-  .welcome-box .wf-row{
-    display:flex;align-items:flex-start;gap:8px;margin:4px 0;
-  }
-  .welcome-box .wf-icon{
-    flex-shrink:0;width:18px;height:18px;border-radius:4px;
-    display:flex;align-items:center;justify-content:center;
-    font-size:11px;
-  }
-  .welcome-box .wf-text{font-size:10px;color:var(--t2);line-height:1.5}
-  .welcome-box .wf-text b{color:var(--t1);font-weight:600}
-  .welcome-box .wf-svg{flex-shrink:0}
-  .welcome-dismiss{
-    display:block;width:100%;margin-top:16px;padding:10px;
-    background:var(--acc);color:#000;border:none;border-radius:12px;
-    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;font-weight:600;
-    cursor:pointer;letter-spacing:.04em;transition:all .15s;
-  }
-  .welcome-dismiss:hover{background:#5eead4;transform:scale(1.02)}
-
-  /* ═════ LOADING SCREEN ═════ */
-  #loader{
-    position:absolute;inset:0;background:var(--bg);z-index:10000;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:20px;
-  }
-  #loader.hidden{display:none}
-
-  .load-dot{
-    position:absolute;width:8px;height:8px;border-radius:50%;
-    background:rgba(34,211,238,.3);animation:dotFloat 6s ease-in-out infinite;
-  }
-  @keyframes dotFloat{
-    0%,100%{transform:translateY(0) scale(1);opacity:.3}
-    50%{transform:translateY(-20px) scale(1.2);opacity:.8}
-  }
-
-  .load-plane{
-    width:60px;height:60px;display:flex;align-items:center;justify-content:center;
-    animation:planeFloat .4s ease-in-out infinite;
-  }
-  @keyframes planeFloat{
-    0%,100%{transform:translateY(0) rotate(-7deg)}
-    50%{transform:translateY(-16px) rotate(7deg)}
-  }
-
-  .plane-trail{
-    position:absolute;left:14px;top:50%;transform:translateY(-50%);
-    display:flex;gap:9px;align-items:center;
-  }
-  .plane-trail span{
-    width:4px;height:4px;border-radius:50%;background:var(--acc);
-    animation:trailPulse 1.3s ease-in-out infinite;
-  }
-  .plane-trail span:nth-child(1){animation-delay:.0s;opacity:1}
-  .plane-trail span:nth-child(2){animation-delay:.18s;opacity:.85;width:3px;height:3px}
-  .plane-trail span:nth-child(3){animation-delay:.36s;opacity:.65;width:2.5px;height:2.5px}
-  .plane-trail span:nth-child(4){animation-delay:.54s;opacity:.4;width:2px;height:2px}
-  .plane-trail span:nth-child(5){animation-delay:.72s;opacity:.2;width:1.5px;height:1.5px}
-  @keyframes trailPulse{
-    0%,100%{transform:scale(.8);filter:brightness(.7)}
-    50%{transform:scale(1.3);filter:brightness(1.4)}
-  }
-
-  .load-brand{
-    font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;font-size:12px;font-weight:700;
-    color:var(--t1);letter-spacing:.12em;text-transform:uppercase;
-  }
-  .load-brand span{color:var(--acc)}
-
-  .load-msg-row{
-    display:flex;align-items:center;gap:7px;
-    font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;font-size:10px;color:var(--t2);
-    height:16px;
-  }
-
-  .load-dots-anim{display:inline-flex;gap:3px}
-  .load-dots-anim span{
-    width:3px;height:3px;border-radius:50%;background:var(--acc);
-    animation:dotBounce 1.1s ease-in-out infinite;
-  }
-  .load-dots-anim span:nth-child(2){animation-delay:.18s}
-  .load-dots-anim span:nth-child(3){animation-delay:.36s}
-  @keyframes dotBounce{
-    0%,100%{transform:translateY(0);opacity:.35}
-    50%{transform:translateY(-4px);opacity:1}
-  }
-
-  .load-bar{
-    width:220px;height:2px;background:rgba(34,211,238,.1);border-radius:1px;overflow:hidden;
-  }
-  .load-bar-fill{
-    height:100%;width:40%;border-radius:1px;
-    background:linear-gradient(90deg,transparent,#22d3ee,#6366f1,transparent);
-    animation:barSlide 1.8s ease-in-out infinite;
-  }
-  @keyframes barSlide{
-    0%{transform:translateX(-200%)}
-    100%{transform:translateX(650%)}
-  }
-
-  /* ═════ FOOTER ═════ */
-  .footer{
-    flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
-    padding:0 14px;background:var(--bg2);border-top:1px solid var(--bdr);
-    height:24px;font-size:9px;color:var(--t2);gap:8px;z-index:2000;
-  }
-
-  .upd{display:flex;align-items:center;gap:4px;white-space:nowrap}
-  .upd.ok span:first-child{color:var(--grn)}
-  .upd.err span:first-child{color:var(--red)}
-  .upd.wrn span:first-child{color:var(--amb)}
-
-  /* ═════ MOBILE ═════ */
-  @media(max-width:640px){
-    .header{
-      padding:0;
-      height:auto;
-      flex-wrap:wrap;
-      gap:0;
-      align-items:center;
+    /* Cockpit-style dark palette - CSS vars for easy theme tweaks */
+    :root{
+      --bg:#090d18;--bg2:#10162a;--bg3:#151d2eee;--bg3s:#151d2e;
+      --bdr:#1a2844;--acc:#22d3ee;--acc2:#22d3ee44;
+      --grn:#34d399;--grn2:#34d39944;--amb:#fbbf24;--red:#f87171;
+      --t1:#e2e8f0;--t2:#94a3b8;--t3:#475569;
     }
 
-    .header-left{order:1;padding:6px 8px;flex:1;min-width:0}
-    .header-center{order:2;flex:0 0 auto;padding:0 4px;gap:10px;justify-content:flex-end}
-    .header-right{order:3;flex:0 0 auto;padding:0 8px 0 4px}
+    /* Full-viewport layout - no scrollbars, flexbox column structure */
+    html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--t1)}
 
-    .ps-logo{height:14px}
-    .divider{height:16px}
-    .vr-icon{width:20px;height:20px;font-size:8px}
-    .vr-name{font-size:12px}
+    #app{width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden}
 
-    .stat{gap:4px}
-    .settings-btn{display:none}
-    .footer{font-size:9px;padding:2px 8px;height:20px}
-    .side-panel{width:100vw;max-width:100vw}
-    .search-box{top:6px;width:min(280px,85vw)}
-    .info-drawer{max-height:55vh}
-    .idr-grid{grid-template-columns:repeat(2,1fr)}
-    .ltgl{width:40px;height:40px}
-  }
+    /* ═════ HEADER ═════ */
+    .header{
+      flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
+      padding:0 14px;background:var(--bg2);border-bottom:1px solid var(--bdr);
+      height:44px;z-index:2000;gap:10px;
+    }
 
-  @media(max-width:380px){
-    .vr-name{display:none}
-    .divider{display:none}
-    .header-center{gap:8px}
-  }
+    .header-left{display:flex;align-items:center;gap:10px;flex-shrink:0}
 
-  ::-webkit-scrollbar{width:4px}
-  ::-webkit-scrollbar-track{background:transparent}
-  ::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px}
+    .ps-logo{height:18px;width:auto;opacity:.92;flex-shrink:0;cursor:pointer;transition:opacity .2s}
+    .ps-logo:hover{opacity:1}
 
-  /* Legend ATIS tip */
-  .legend-atis-tip{
-    display:flex;align-items:center;gap:6px;
-    padding:6px 8px;margin-bottom:8px;
-    background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.2);
-    border-radius:10px;cursor:default;
-  }
-  .legend-atis-tip svg{flex-shrink:0;width:14px;height:14px;fill:#22d3ee}
-  .legend-atis-tip span{font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;font-size:8.5px;color:#22d3ee;line-height:1.35}
+    .divider{width:1px;height:22px;background:var(--bdr);flex-shrink:0}
 
-  /* Mapbox overrides */
-  .mapboxgl-canvas-container{cursor:grab}
-  .mapboxgl-canvas-container.dragging{cursor:grabbing}
-</style>
+    .vr-brand{display:flex;align-items:center;gap:7px;flex-shrink:0;cursor:pointer;text-decoration:none}
+    .vr-icon{
+      width:24px;height:24px;border-radius:5px;
+      background:linear-gradient(135deg,#22d3ee,#6366f1);
+      display:flex;align-items:center;justify-content:center;
+      font-size:10px;font-weight:700;color:#fff;font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;
+      flex-shrink:0;
+    }
+    .vr-name{font-weight:600;font-size:14px;letter-spacing:-.02em;white-space:nowrap;color:var(--t1)}
+    .vr-name span{color:var(--acc)}
+
+    .header-center{flex:1;display:flex;align-items:center;justify-content:center;gap:14px;min-width:0}
+
+    .stat{display:flex;align-items:center;gap:5px;font-size:11px;font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;white-space:nowrap}
+    .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+    .dot-p{background:var(--acc);box-shadow:0 0 6px var(--acc2)}
+    .dot-a{background:var(--grn);box-shadow:0 0 6px var(--grn2)}
+    .dot-live{background:var(--grn);animation:pls 2s infinite}
+    @keyframes pls{0%,100%{opacity:1}50%{opacity:.3}}
+    .stat-lbl{color:var(--t2)}
+    .stat-val{color:var(--t1);font-weight:600}
+
+    .stat-lbl::before{content:attr(data-full)}
+    @media(max-width:799px){.stat-lbl::before{content:attr(data-short)}}
+    @media(max-width:479px){.stat-lbl{display:none}.stat{gap:3px;font-size:10px}}
+
+    .header-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+
+    .settings-btn{
+      width:30px;height:30px;border-radius:10px;border:1px solid var(--bdr);
+      background:transparent;color:var(--t2);cursor:pointer;
+      display:flex;align-items:center;justify-content:center;transition:all .18s ease;
+    }
+    .settings-btn:hover{border-color:var(--acc);color:var(--t1)}
+
+    /* ═════ CONTENT ═════ */
+    .content{flex:1;position:relative;overflow:hidden;min-height:0}
+
+    #map{width:100%;height:100%;background:var(--bg);background-image:radial-gradient(circle at 20% 50%, rgba(34, 211, 238, 0.03) 0%, transparent 50%)}
+
+    /* ─ SEARCH OVERLAY ─ */
+    .search-box{
+      position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:1500;
+      width:min(340px,90vw);
+    }
+    .search-input{
+      width:100%;padding:8px 12px 8px 34px;background:var(--bg3s);
+      border:1px solid var(--bdr);border-radius:12px;color:var(--t1);
+      font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;font-size:12px;outline:none;
+      backdrop-filter:blur(12px);transition:border-color .2s;
+    }
+    .search-input::placeholder{color:var(--t3)}
+    .search-input:focus{border-color:var(--acc)}
+
+    /* ─ MAP CONTROLS ─ */
+    .map-controls{
+      position:absolute;bottom:20px;right:14px;z-index:1400;display:flex;flex-direction:column;gap:6px;
+    }
+    .map-control-btn{
+      width:36px;height:36px;border-radius:10px;background:var(--bg3s);
+      border:1px solid var(--bdr);color:var(--t2);cursor:pointer;
+      display:flex;align-items:center;justify-content:center;transition:all .18s ease;
+      font-size:16px;backdrop-filter:blur(8px);font-weight:600;
+    }
+    .map-control-btn:hover{background:var(--bg3);border-color:var(--acc);color:var(--t1)}
+
+    /* ─ LAYER TOGGLES (Right side) ─ */
+    .layer-toggles{
+      position:absolute;top:70px;right:14px;z-index:1400;display:flex;flex-direction:column;gap:6px;
+    }
+    .layer-toggle{
+      width:38px;height:36px;border-radius:12px;background:var(--bg3s);
+      border:1px solid var(--bdr);color:var(--t2);cursor:pointer;
+      display:flex;align-items:center;justify-content:center;font-size:13px;
+      transition:all .18s ease;backdrop-filter:blur(8px);font-weight:600;font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;
+    }
+    .layer-toggle:hover{border-color:var(--acc);color:var(--t1)}
+    .layer-toggle.active{background:var(--acc);border-color:var(--acc);color:var(--bg);box-shadow:0 0 12px rgba(34,211,238,.4)}
+
+    /* ─ LEGEND PANEL ─ */
+    #legend{
+      position:absolute;bottom:50px;left:14px;z-index:1400;
+      background:var(--bg3s);border:1px solid var(--bdr);border-radius:12px;
+      padding:12px;max-width:180px;max-height:240px;overflow-y:auto;
+      backdrop-filter:blur(12px);display:none;
+      font-size:11px;font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;
+    }
+    #legend.open{display:block}
+    .legend-item{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+    .legend-item:last-child{margin-bottom:0}
+    .legend-color{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+    .legend-label{color:var(--t2)}
+
+    /* ─ ATIS VOICE BUTTON ─ */
+    .atis-btn{
+      position:absolute;bottom:14px;left:14px;z-index:1400;
+      width:36px;height:36px;border-radius:10px;background:var(--bg3s);
+      border:1px solid var(--bdr);color:var(--t2);cursor:pointer;
+      display:flex;align-items:center;justify-content:center;transition:all .18s ease;
+      font-size:16px;backdrop-filter:blur(8px);
+    }
+    .atis-btn:hover{border-color:var(--acc);color:var(--t1)}
+    .atis-btn.playing{background:var(--amb);border-color:var(--amb);color:var(--bg);box-shadow:0 0 12px rgba(251,191,36,.4)}
+
+    /* ─ INFO DRAWER (Bottom slide-up) ─ */
+    #infoDrawer{
+      position:absolute;bottom:-100%;left:0;right:0;z-index:1300;
+      background:var(--bg2);border-top:1px solid var(--bdr);
+      max-height:45vh;overflow-y:auto;transition:bottom .28s ease;
+      backdrop-filter:blur(8px);
+    }
+    #infoDrawer.open{bottom:0}
+
+    .drawer-header{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:12px 14px;border-bottom:1px solid var(--bdr);flex-shrink:0;
+    }
+    .drawer-title{font-weight:600;font-size:13px;color:var(--t1)}
+    .drawer-close{background:none;border:none;color:var(--t2);cursor:pointer;padding:4px;transition:color .2s}
+    .drawer-close:hover{color:var(--t1)}
+
+    .drawer-tabs{
+      display:flex;gap:8px;padding:8px 14px;border-bottom:1px solid var(--bdr);flex-shrink:0;
+      font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;font-size:10px;
+    }
+    .drawer-tab{
+      padding:6px 10px;border-radius:6px;background:transparent;color:var(--t3);
+      border:1px solid transparent;cursor:pointer;transition:all .18s ease;
+      font-weight:600;text-transform:uppercase;letter-spacing:.04em;
+    }
+    .drawer-tab:hover{color:var(--t2)}
+    .drawer-tab.active{background:var(--acc);color:var(--bg);border-color:var(--acc)}
+
+    .drawer-content{padding:12px 14px;font-size:11px}
+    .drawer-content div{margin-bottom:10px}
+
+    /* ─ SIDE PANEL (Right slide-out) ─ */
+    #sidePanel{
+      position:absolute;top:0;right:-100%;width:min(320px,100vw);height:100%;
+      background:var(--bg2);border-left:1px solid var(--bdr);z-index:1200;
+      transition:right .28s ease;flex-direction:column;display:flex;
+      backdrop-filter:blur(8px);
+    }
+    #sidePanel.open{right:0}
+
+    .side-header{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:12px;border-bottom:1px solid var(--bdr);flex-shrink:0;
+    }
+    .side-title{font-weight:600;font-size:12px;color:var(--t1);text-transform:uppercase;letter-spacing:.05em;font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace}
+    .side-close{background:none;border:none;color:var(--t2);cursor:pointer;padding:4px;transition:color .2s}
+    .side-close:hover{color:var(--t1)}
+
+    .side-content{flex:1;overflow-y:auto;padding:8px}
+    .traffic-item{
+      padding:8px;margin-bottom:4px;background:var(--bg3s);border-radius:8px;
+      border:1px solid var(--bdr);cursor:pointer;transition:all .18s ease;
+      border-left:3px solid transparent;
+      font-size:11px;font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;
+    }
+    .traffic-item:hover{background:var(--bg3);border-color:var(--acc)}
+    .traffic-item.active{background:var(--bg3);border-left-color:var(--acc);border-color:var(--acc)}
+    .traffic-call{font-weight:600;color:var(--acc);display:block;margin-bottom:2px}
+    .traffic-info{color:var(--t3);font-size:10px}
+
+    /* ─ WELCOME POPUP ─ */
+    #welcomePopup{
+      position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:3000;
+      background:var(--bg2);border:1px solid var(--bdr);border-radius:14px;
+      padding:24px;max-width:360px;backdrop-filter:blur(16px);
+      display:none;
+    }
+    #welcomePopup.show{display:block}
+    #welcomePopup::backdrop{background:rgba(9,13,24,.8)}
+
+    .popup-title{font-size:14px;font-weight:700;margin-bottom:12px;color:var(--acc)}
+    .popup-text{font-size:11px;color:var(--t2);line-height:1.6;margin-bottom:8px}
+    .popup-button{
+      margin-top:16px;padding:8px 16px;border-radius:10px;
+      background:var(--acc);color:var(--bg);border:none;cursor:pointer;
+      font-weight:600;font-size:11px;transition:all .18s ease;
+      width:100%;text-transform:uppercase;letter-spacing:.04em;
+    }
+    .popup-button:hover{box-shadow:0 0 16px rgba(34,211,238,.4)}
+
+    /* ─ LOADING SCREEN ─ */
+    #loader{
+      position:absolute;inset:0;background:#090d18;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      z-index:9999;transition:opacity .8s ease;overflow:hidden;
+    }
+    #loader.fade{opacity:0;pointer-events:none}
+
+    #loader::before{
+      content:'';position:absolute;
+      width:420px;height:420px;border-radius:50%;
+      background:radial-gradient(circle,rgba(34,211,238,.07) 0%,transparent 70%);
+      top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;
+    }
+
+    .load-dot{
+      position:absolute;width:2px;height:2px;border-radius:50%;
+      background:rgba(34,211,238,.45);
+      animation:ldotFade 3s ease-in-out infinite;
+    }
+    @keyframes ldotFade{0%,100%{opacity:.15;transform:scale(1)}50%{opacity:1;transform:scale(2)}}
+
+    .load-center{
+      display:flex;flex-direction:column;align-items:center;gap:22px;position:relative;z-index:1;
+    }
+
+    .load-logo-img{height:20px;opacity:.85;filter:brightness(1.1)}
+
+    .plane-scene{
+      position:relative;width:180px;height:160px;
+      display:flex;align-items:center;justify-content:center;
+    }
+
+    .plane-ring,.plane-ring-2{
+      position:absolute;border-radius:50%;border:1px solid rgba(34,211,238,.18);
+      animation:ringPulse 2.6s ease-in-out infinite;
+    }
+    .plane-ring{width:148px;height:148px}
+    .plane-ring-2{width:104px;height:104px;animation-delay:.9s}
+    @keyframes ringPulse{
+      0%,100%{opacity:.25;transform:scale(.94)}
+      50%{opacity:1;transform:scale(1.06)}
+    }
+
+    .plane-icon{
+      position:relative;z-index:2;
+      animation:planeFloat 2.8s ease-in-out infinite;
+      filter:drop-shadow(0 0 14px rgba(34,211,238,.55));
+    }
+    @keyframes planeFloat{
+      0%,100%{transform:translateY(0) rotate(-7deg)}
+      50%{transform:translateY(-16px) rotate(7deg)}
+    }
+
+    .plane-trail{
+      position:absolute;left:14px;top:50%;transform:translateY(-50%);
+      display:flex;gap:9px;align-items:center;
+    }
+    .plane-trail span{
+      width:4px;height:4px;border-radius:50%;background:var(--acc);
+      animation:trailPulse 1.3s ease-in-out infinite;
+    }
+    .plane-trail span:nth-child(1){animation-delay:.0s;opacity:1}
+    .plane-trail span:nth-child(2){animation-delay:.18s;opacity:.85;width:3px;height:3px}
+    .plane-trail span:nth-child(3){animation-delay:.36s;opacity:.65;width:2.5px;height:2.5px}
+    .plane-trail span:nth-child(4){animation-delay:.54s;opacity:.4;width:2px;height:2px}
+    .plane-trail span:nth-child(5){animation-delay:.72s;opacity:.2;width:1.5px;height:1.5px}
+    @keyframes trailPulse{
+      0%,100%{transform:scale(.8);filter:brightness(.7)}
+      50%{transform:scale(1.3);filter:brightness(1.4)}
+    }
+
+    .load-brand{
+      font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;font-size:12px;font-weight:700;
+      color:var(--t1);letter-spacing:.12em;text-transform:uppercase;
+    }
+    .load-brand span{color:var(--acc)}
+
+    .load-msg-row{
+      display:flex;align-items:center;gap:4px;font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;
+      font-size:11px;color:var(--t2);
+    }
+    .load-dots-anim span{
+      display:inline-block;width:3px;height:3px;border-radius:50%;background:var(--acc);
+      animation:dotBounce .6s infinite;margin:0 2px;
+    }
+    .load-dots-anim span:nth-child(2){animation-delay:.1s}
+    .load-dots-anim span:nth-child(3){animation-delay:.2s}
+    @keyframes dotBounce{0%,100%{opacity:.3}50%{opacity:1}}
+
+    .load-bar{
+      width:120px;height:2px;background:var(--bdr);border-radius:1px;overflow:hidden;
+    }
+    .load-bar-fill{
+      height:100%;background:linear-gradient(90deg,var(--acc),var(--grn));
+      animation:barFill 2.4s ease-in-out infinite;
+    }
+    @keyframes barFill{0%{width:0}100%{width:100%}}
+
+    /* ═════ FOOTER ═════ */
+    .footer{
+      flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
+      padding:3px 12px;background:var(--bg2);border-top:1px solid var(--bdr);
+      font-size:10px;font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;color:var(--t3);
+      height:24px;z-index:2000;gap:8px;
+    }
+    .upd{display:flex;align-items:center;gap:4px}
+    .upd.ok{color:var(--grn)}
+    .upd.stale{color:var(--amb)}
+    .coords{color:var(--t3);font-size:9px}
+
+    /* Responsive mobile */
+    @media(max-width:640px){
+      .header{padding:0 8px;height:40px}
+      .header-center{gap:8px;font-size:10px}
+      #sidePanel{width:100%}
+      .map-controls{bottom:14px;right:10px}
+      .layer-toggles{top:54px;right:10px}
+    }
+  </style>
 </head>
-
 <body>
 
-<div id="app" title="Virtual Flights Map 3D Globe - VATSIM + IVAO + POSCON">
-
-  <!-- HEADER -->
+<div id="app">
+  <!-- ═══ HEADER ═══ -->
   <div class="header">
     <div class="header-left">
       <a href="https://www.pushstartsims.com" target="_blank" rel="noopener" style="display:flex;align-items:center">
@@ -535,12 +367,28 @@
              alt="Pushstart Simulators"
              onerror="this.style.display='none'">
       </a>
+      <div class="divider"></div>
+      <a class="vr-brand" href="#" onclick="return false">
+        <div class="vr-icon">3D</div>
+        <span class="vr-name">Virtual Flights <span>Map</span></span>
+      </a>
     </div>
 
     <div class="header-center">
-      <div class="stat" title="Total virtual pilots in-flight"><div class="dot dot-p"></div><span class="stat-lbl" data-full="Virtual Pilots" data-short="PLTs"></span><span class="stat-val" id="nPilots">—</span></div>
-      <div class="stat" title="Active ATC"><div class="dot dot-a"></div><span class="stat-lbl" data-full="ATC" data-short="ATC"></span><span class="stat-val" id="nATC">—</span></div>
-      <div class="stat" title="Live feed"><div class="dot dot-live"></div><span class="stat-lbl" data-full="Live" data-short="Live"></span></div>
+      <div class="stat" title="Total virtual pilots in-flight">
+        <div class="dot dot-p"></div>
+        <span class="stat-lbl" data-full="Virtual Pilots" data-short="PLTs"></span>
+        <span class="stat-val" id="nPilots">—</span>
+      </div>
+      <div class="stat" title="Active ATC">
+        <div class="dot dot-a"></div>
+        <span class="stat-lbl" data-full="ATC" data-short="ATC"></span>
+        <span class="stat-val" id="nATC">—</span>
+      </div>
+      <div class="stat" title="Live feed">
+        <div class="dot dot-live"></div>
+        <span class="stat-lbl" data-full="Live" data-short="Live"></span>
+      </div>
     </div>
 
     <div class="header-right">
@@ -552,7 +400,7 @@
     </div>
   </div>
 
-  <!-- CONTENT -->
+  <!-- ═══ CONTENT ═══ -->
   <div class="content" id="content">
     <!-- LOADING SCREEN -->
     <div id="loader">
@@ -563,789 +411,521 @@
       <div class="load-dot" style="top:22%;left:78%;animation-delay:.35s"></div>
       <div class="load-dot" style="top:60%;left:6%;animation-delay:1.8s"></div>
       <div class="load-dot" style="top:10%;left:48%;animation-delay:1.05s"></div>
+      <div class="load-dot" style="top:88%;left:62%;animation-delay:.55s"></div>
 
-      <div class="load-plane">
-        <div class="plane-trail">
-          <span></span><span></span><span></span><span></span><span></span>
+      <div class="load-center">
+        <img class="load-logo-img"
+             src="https://static.wixstatic.com/media/8cef4e_a9f713cedfff4ea88689521db953de89~mv2.png/v1/fill/w_300,h_65,al_c,q_85,enc_avif,quality_auto/White%20logo%20-%20no%20background.png"
+             alt="PushStart Simulators"
+             onerror="this.style.display='none'">
+
+        <div class="plane-scene">
+          <div class="plane-ring"></div>
+          <div class="plane-ring-2"></div>
+          <div class="plane-trail">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <svg class="plane-icon" width="56" height="56" viewBox="0 0 24 24" fill="none">
+            <path d="M21.5 2L2 10.8L9.8 13.2L12.5 21.5L21.5 2Z"
+                  fill="rgba(34,211,238,0.12)" stroke="#22d3ee"
+                  stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="M9.8 13.2L21.5 2" stroke="#22d3ee"
+                  stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M9.8 13.2L12.8 17.5" stroke="rgba(34,211,238,0.45)"
+                  stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
         </div>
-        <svg width="40" height="40" viewBox="-14 -14 28 28">
-          <path d="M0,-11 C1.5,-11 1.6,-7 1.6,-4 L1.6,2 L1.6,7 L0,8.5 L-1.6,7 L-1.6,-4 C-1.6,-7 -1.5,-11 0,-11Z" fill="#a78bfa"/>
-          <path d="M1.6,-.5 L11,4.5 L10.8,6.2 Q8,5 1.6,2.5Z" fill="#a78bfa"/>
-          <path d="M-1.6,-.5 L-11,4.5 L-10.8,6.2 Q-8,5 -1.6,2.5Z" fill="#a78bfa"/>
-        </svg>
-      </div>
 
-      <div class="load-brand">VIRTUAL <span>FLIGHTS</span> MAP</div>
-      <div class="load-msg-row">
-        <span id="loadMsg">Initializing globe</span>
-        <div class="load-dots-anim"><span></span><span></span><span></span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:7px">
+          <div class="load-brand">@PushStart<span>Sims</span></div>
+          <div class="load-msg-row">
+            <span id="loadMsg">Loading 3D globe</span>
+            <span class="load-dots-anim">
+              <span></span><span></span><span></span>
+            </span>
+          </div>
+        </div>
+
+        <div class="load-bar"><div class="load-bar-fill"></div></div>
       </div>
-      <div class="load-bar"><div class="load-bar-fill"></div></div>
     </div>
 
-    <!-- MAP -->
+    <!-- 3D GLOBE MAP -->
     <div id="map"></div>
 
     <!-- SEARCH BOX -->
     <div class="search-box">
-      <div style="position:relative">
-        <svg class="search-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-        </svg>
-        <input type="text" class="search-input" id="searchInput" placeholder="Search callsign or airport...">
-      </div>
-      <div class="search-results" id="searchResults"></div>
+      <input type="text" id="searchInput" class="search-input" placeholder="Search callsigns, airports...">
+    </div>
+
+    <!-- LAYER TOGGLES (Right side) -->
+    <div class="layer-toggles">
+      <button class="layer-toggle active" data-layer="aircraft" title="Toggle aircraft">A</button>
+      <button class="layer-toggle active" data-layer="atc" title="Toggle ATC">C</button>
+      <button class="layer-toggle" data-layer="routes" title="Toggle routes">R</button>
     </div>
 
     <!-- MAP CONTROLS -->
-    <div class="map-ctrls">
-      <button class="mbtn" id="zoomIn" title="Zoom in">+</button>
-      <button class="mbtn" id="zoomOut" title="Zoom out">−</button>
-      <button class="mbtn" id="resetView" title="Reset view">⌂</button>
-    </div>
-
-    <!-- LAYER TOGGLES (Right side, stacked) -->
-    <div class="map-ctrls" style="right:auto;left:10px;bottom:158px;width:44px">
-      <button class="ltgl on" id="ltglATC" title="Toggle ATC" data-layer="atc">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>
-        </svg>
-        <span>ATC</span>
-      </button>
-      <button class="ltgl on" id="ltglRoutes" title="Toggle Routes" data-layer="routes">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-        </svg>
-        <span>ROUTES</span>
-      </button>
-      <button class="ltgl" id="ltglWX" title="Toggle Weather" data-layer="weather">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M9 18h6M8 22h8M19 13a6 6 0 1 0-12 0"/>
-        </svg>
-        <span>WX</span>
-      </button>
-      <button class="ltgl" id="ltglFIR" title="Toggle FIR" data-layer="fir">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polygon points="12 2 22 7 22 17 12 22 2 17 2 7 12 2"/>
-        </svg>
-        <span>FIR</span>
-      </button>
+    <div class="map-controls">
+      <button class="map-control-btn" id="zoomIn" title="Zoom in">+</button>
+      <button class="map-control-btn" id="zoomOut" title="Zoom out">-</button>
+      <button class="map-control-btn" id="resetView" title="Reset view">⟳</button>
     </div>
 
     <!-- LEGEND PANEL -->
-    <div class="legend-panel" id="legendPanel">
-      <div class="legend-title">Aircraft</div>
-
-      <div class="legend-row">
-        <div class="legend-icon">
-          <svg width="28" height="28" viewBox="-14 -14 28 28">
-            <path d="M0,-12 C2,-12 2.2,-8 2.2,-5 L2.2,2 L2.2,7 L0,9 L-2.2,7 L-2.2,2 L-2.2,-5 C-2.2,-8 -2,-12 0,-12Z" fill="#38bdf8"/>
-            <path d="M2.2,0 L12,5 L11.5,6.8 L2.2,3Z" fill="#38bdf8"/>
-            <path d="M-2.2,0 L-12,5 L-11.5,6.8 L-2.2,3Z" fill="#38bdf8"/>
-          </svg>
-        </div>
-        <div>
-          <div class="legend-label" style="color:#38bdf8">Heavy</div>
-          <div class="legend-sub">747, A380, A350, 777</div>
-        </div>
+    <div id="legend">
+      <div style="font-weight:600;color:var(--acc);margin-bottom:8px;text-transform:uppercase;font-size:10px;letter-spacing:.04em">Aircraft Types</div>
+      <div class="legend-item">
+        <div class="legend-color" style="background:var(--acc)"></div>
+        <span class="legend-label">Commercial</span>
       </div>
-
-      <div class="legend-row">
-        <div class="legend-icon">
-          <svg width="28" height="28" viewBox="-14 -14 28 28">
-            <path d="M0,-11 C1.5,-11 1.6,-7 1.6,-4 L1.6,2 L1.6,7 L0,8.5 L-1.6,7 L-1.6,-4 C-1.6,-7 -1.5,-11 0,-11Z" fill="#a78bfa"/>
-            <path d="M1.6,-.5 L11,4.5 L10.8,6.2 Q8,5 1.6,2.5Z" fill="#a78bfa"/>
-            <path d="M-1.6,-.5 L-11,4.5 L-10.8,6.2 Q-8,5 -1.6,2.5Z" fill="#a78bfa"/>
-          </svg>
-        </div>
-        <div>
-          <div class="legend-label" style="color:#a78bfa">Medium</div>
-          <div class="legend-sub">A320, 737, 757</div>
-        </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background:var(--grn)"></div>
+        <span class="legend-label">General Aviation</span>
       </div>
-
-      <div class="legend-row">
-        <div class="legend-icon">
-          <svg width="28" height="28" viewBox="-14 -14 28 28">
-            <path d="M0,-10 C.8,-10 .9,-6 .9,-3.5 L.9,5 L.9,7 L0,8 L-.9,7 L-.9,5 L-.9,-3.5 C-.9,-6 -.8,-10 0,-10Z" fill="#f472b6"/>
-            <path d="M.9,-1.5 L8.5,3 L8,4.5 L.9,1.5Z" fill="#f472b6"/>
-            <path d="M-.9,-1.5 L-8.5,3 L-8,4.5 L-.9,1.5Z" fill="#f472b6"/>
-          </svg>
-        </div>
-        <div>
-          <div class="legend-label" style="color:#f472b6">Light Jet</div>
-          <div class="legend-sub">Citation, Gulfstream</div>
-        </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background:var(--amb)"></div>
+        <span class="legend-label">Helicopter</span>
       </div>
-
-      <div class="legend-row">
-        <div class="legend-icon">
-          <svg width="28" height="28" viewBox="-14 -14 28 28">
-            <path d="M0,-11 C1.6,-11 2,-9 2,-7 L2,-3 L12.5,-3.5 L12,-1 L2,-1 L1.5,5 L1,7 L5.5,8 L5,10 L.8,8.5 L.5,10.5 L0,11.5 L-.5,10.5 L-.8,8.5 L-5,10 L-5.5,8 L-1,7 L-1.5,5 L-2,-1 L-12,-1 L-12.5,-3.5 L-2,-3 C-2,-9 -1.6,-11 0,-11Z" fill="#fb923c"/>
-          </svg>
-        </div>
-        <div>
-          <div class="legend-label" style="color:#fb923c">General Av.</div>
-          <div class="legend-sub">Cessna, Piper</div>
-        </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background:var(--red)"></div>
+        <span class="legend-label">Military</span>
       </div>
-
-      <div class="legend-atis-tip">
-        <svg width="14" height="14" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-        <span>Click ATC for ATIS voice</span>
+      <div style="font-weight:600;color:var(--acc);margin:12px 0 8px;text-transform:uppercase;font-size:10px;letter-spacing:.04em">ATC</div>
+      <div class="legend-item">
+        <div class="legend-color" style="background:var(--grn)"></div>
+        <span class="legend-label">Active Control</span>
       </div>
     </div>
 
     <!-- ATIS VOICE BUTTON -->
-    <button class="atis-toggle" id="atisToggle" title="ATIS Voice">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15h4v2h-4zm6-6h-5V7H9v4H4v2h5v4h2v-4h5v-2z"/>
-      </svg>
-      <span>ATIS</span>
-    </button>
+    <button class="atis-btn" id="atisBtn" title="ATIS voice (coming soon)">🔊</button>
 
-    <!-- LEGEND TOGGLE -->
-    <button class="legend-toggle" id="legendToggle" title="Toggle aircraft legend">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-      </svg>
-      <span>KEY</span>
-    </button>
-
-    <!-- INFO DRAWER -->
-    <div class="info-drawer" id="infoDrawer">
-      <div class="idr-handle">
-        <div class="idr-title-area">
-          <span class="idr-callsign" id="idrCallsign">—</span>
-          <span class="idr-badge" id="idrBadge">—</span>
-          <span class="idr-type" id="idrType">—</span>
-        </div>
-        <div class="idr-tabs" id="idrTabs"></div>
-        <button class="idr-close" id="idrClose">✕</button>
+    <!-- INFO DRAWER (Bottom) -->
+    <div id="infoDrawer">
+      <div class="drawer-header">
+        <div class="drawer-title" id="drawerTitle">Flight Details</div>
+        <button class="drawer-close" id="closeDrawer">✕</button>
       </div>
-      <div class="idr-body" id="idrBody"></div>
+      <div class="drawer-tabs">
+        <button class="drawer-tab active" data-tab="route">ROUTE</button>
+        <button class="drawer-tab" data-tab="live">LIVE</button>
+        <button class="drawer-tab" data-tab="remarks">RMKS</button>
+      </div>
+      <div class="drawer-content" id="drawerContent"></div>
     </div>
 
-    <!-- SIDE PANEL -->
-    <div class="side-panel" id="sidePanel">
-      <div class="sp-head">
-        <div class="sp-title">Virtual Flights</div>
-        <button class="sp-close" id="spClose">✕</button>
+    <!-- SIDE PANEL (Right) -->
+    <div id="sidePanel">
+      <div class="side-header">
+        <span class="side-title">Traffic</span>
+        <button class="side-close" id="closeSidePanel">✕</button>
       </div>
-      <div class="sp-tabs">
-        <button class="sp-tab active" data-tab="pilots">In-Flight</button>
-        <button class="sp-tab" data-tab="atc">Controllers</button>
-      </div>
-      <div class="sp-list" id="spList"></div>
-    </div>
-
-    <!-- WELCOME POPUP -->
-    <div class="welcome-overlay" id="welcomeOverlay">
-      <div class="welcome-box">
-        <h2>Virtual Flights Map 3D</h2>
-        <div class="welcome-sub">Live traffic from VATSIM, IVAO & POSCON virtual ATC networks</div>
-
-        <h3>Aircraft Types</h3>
-        <div class="wf-row">
-          <svg class="wf-svg" width="22" height="22" viewBox="-14 -14 28 28"><path d="M0,-12 C2,-12 2.2,-8 2.2,-5 L2.2,2 L2.2,7 L0,9 L-2.2,7 L-2.2,2 L-2.2,-5 C-2.2,-8 -2,-12 0,-12Z" fill="#38bdf8"/><path d="M2.2,0 L12,5 L11.5,6.8 L2.2,3Z" fill="#38bdf8"/></svg>
-          <div class="wf-text"><b style="color:#38bdf8">Heavy</b> — 747, A380, A350, 777</div>
-        </div>
-        <div class="wf-row">
-          <svg class="wf-svg" width="22" height="22" viewBox="-14 -14 28 28"><path d="M0,-11 C1.5,-11 1.6,-7 1.6,-4 L1.6,2 L1.6,7 L0,8.5 L-1.6,7 L-1.6,-4 C-1.6,-7 -1.5,-11 0,-11Z" fill="#a78bfa"/><path d="M1.6,-.5 L11,4.5 L10.8,6.2 Q8,5 1.6,2.5Z" fill="#a78bfa"/></svg>
-          <div class="wf-text"><b style="color:#a78bfa">Medium</b> — A320, 737, 757</div>
-        </div>
-        <div class="wf-row">
-          <svg class="wf-svg" width="22" height="22" viewBox="-14 -14 28 28"><path d="M0,-10 C.8,-10 .9,-6 .9,-3.5 L.9,5 L.9,7 L0,8 L-.9,7 L-.9,5 L-.9,-3.5 C-.9,-6 -.8,-10 0,-10Z" fill="#f472b6"/><path d="M.9,-1.5 L8.5,3 L8,4.5 L.9,1.5Z" fill="#f472b6"/></svg>
-          <div class="wf-text"><b style="color:#f472b6">Light Jet</b> — Citation, Gulfstream</div>
-        </div>
-        <div class="wf-row">
-          <svg class="wf-svg" width="22" height="22" viewBox="-14 -14 28 28"><path d="M0,-11 C1.6,-11 2,-9 2,-7 L2,-3 L12.5,-3.5 L12,-1 L2,-1 L1.5,5 L1,7 L5.5,8 L5,10 L.8,8.5 L.5,10.5 L0,11.5 L-.5,10.5 L-.8,8.5 L-5,10 L-5.5,8 L-1,7 L-1.5,5 L-2,-1 L-12,-1 L-12.5,-3.5 L-2,-3 C-2,-9 -1.6,-11 0,-11Z" fill="#fb923c"/></svg>
-          <div class="wf-text"><b style="color:#fb923c">General Av.</b> — Cessna, Piper</div>
-        </div>
-
-        <h3>Map Features</h3>
-        <div class="wf-row"><div class="wf-icon" style="background:rgba(34,211,238,.15);color:#22d3ee;font-size:9px">●</div><div class="wf-text">Colored circles = <b>Active ATC</b></div></div>
-        <div class="wf-row"><div class="wf-icon" style="background:rgba(34,211,238,.15);color:#22d3ee;font-size:9px">✈</div><div class="wf-text">Click aircraft for details, route & remarks</div></div>
-        <div class="wf-row"><div class="wf-icon" style="background:rgba(34,211,238,.15);color:#22d3ee;font-size:10px">◄</div><div class="wf-text"><b>ATIS Voice</b> — bottom left button</div></div>
-
-        <h3>Controls</h3>
-        <p>Right side: zoom, reset. Left side: ATC/Routes/Weather toggles. Use search to find callsigns or airports.</p>
-
-        <button class="welcome-dismiss" id="welcomeDismiss">Got it</button>
-      </div>
+      <div class="side-content" id="trafficList"></div>
     </div>
   </div>
 
-  <!-- FOOTER -->
+  <!-- WELCOME POPUP -->
+  <div id="welcomePopup">
+    <div class="popup-title">Welcome to 3D Globe View</div>
+    <div class="popup-text">Experience live VATSIM traffic in stunning 3D.</div>
+    <div class="popup-text" style="font-size:10px">Click aircraft to view details. Use layer toggles (A/C/R) to customize your view.</div>
+    <button class="popup-button" id="closeWelcome">Get Started</button>
+  </div>
+
+  <!-- ═══ FOOTER ═══ -->
   <div class="footer">
-    <div class="upd ok" id="updBadge"><span>●</span> <span id="updTxt">Connecting…</span></div>
-    <div style="display:flex;align-items:center;gap:8px;font-size:9px;color:rgba(148,163,184,0.7);">
-      <span>&copy; 2026 Pushstart LLC</span>
+    <div style="flex:1">Data source: VATSIM</div>
+    <div class="upd ok">
+      <span style="width:6px;height:6px;border-radius:50%;background:var(--grn);display:inline-block"></span>
+      Live
     </div>
-    <div style="display:flex;align-items:center;gap:12px;">
-      <div id="coords">—</div>
-      <div id="zoomLvl">—</div>
-    </div>
+    <div class="coords" id="coords">0°, 0°</div>
   </div>
 </div>
 
 <script>
-// Crafted by Pawan K Jajoo
-
-(function(){
-  'use strict';
-
-  const App = {
-    map: null,
-    accessToken: 'YOUR_MAPBOX_PUBLIC_TOKEN',
-    pilots: [],
-    atc: [],
-    currentFlight: null,
-    layers: {
-      atc: true,
-      routes: true,
-      weather: false,
-      fir: false
-    },
-    updateTimer: null,
-    elements: {},
-
-    init() {
-      this.cacheElements();
-      this.setupMapbox();
-      this.setupEventListeners();
-      this.showWelcome();
-      this.startDataFetch();
-    },
-
-    cacheElements() {
-      this.elements = {
-        loader: document.getElementById('loader'),
-        map: document.getElementById('map'),
-        nPilots: document.getElementById('nPilots'),
-        nATC: document.getElementById('nATC'),
-        updBadge: document.getElementById('updBadge'),
-        updTxt: document.getElementById('updTxt'),
-        coords: document.getElementById('coords'),
-        zoomLvl: document.getElementById('zoomLvl'),
-        togglePanel: document.getElementById('togglePanel'),
-        sidePanel: document.getElementById('sidePanel'),
-        spClose: document.getElementById('spClose'),
-        spList: document.getElementById('spList'),
-        spTabs: document.querySelectorAll('.sp-tab'),
-        infoDrawer: document.getElementById('infoDrawer'),
-        idrCallsign: document.getElementById('idrCallsign'),
-        idrBadge: document.getElementById('idrBadge'),
-        idrType: document.getElementById('idrType'),
-        idrTabs: document.getElementById('idrTabs'),
-        idrBody: document.getElementById('idrBody'),
-        idrClose: document.getElementById('idrClose'),
-        searchInput: document.getElementById('searchInput'),
-        searchResults: document.getElementById('searchResults'),
-        legendPanel: document.getElementById('legendPanel'),
-        legendToggle: document.getElementById('legendToggle'),
-        welcomeOverlay: document.getElementById('welcomeOverlay'),
-        welcomeDismiss: document.getElementById('welcomeDismiss'),
-        zoomIn: document.getElementById('zoomIn'),
-        zoomOut: document.getElementById('zoomOut'),
-        resetView: document.getElementById('resetView'),
-        loadMsg: document.getElementById('loadMsg'),
-      };
-    },
-
-    setupMapbox() {
-      mapboxgl.accessToken = this.accessToken;
-
-      this.map = new mapboxgl.Map({
-        container: 'map',
-        style: 'mapbox://styles/mapbox/dark-v11',
-        center: [0, 20],
-        zoom: 2,
-        projection: 'globe',
-        pitch: 45,
-        bearing: 0,
-        attributionControl: false
-      });
-
-      this.map.on('idle', () => {
-        this.startGlobeRotation();
-      });
-
-      this.map.on('mousemove', (e) => {
-        const { lng, lat } = e.lngLat;
-        this.elements.coords.textContent = `${lat.toFixed(2)}, ${lng.toFixed(2)}`;
-      });
-
-      this.map.on('zoom', () => {
-        this.elements.zoomLvl.textContent = `Z: ${this.map.getZoom().toFixed(1)}`;
-      });
-
-      this.map.on('load', () => {
-        this.elements.loader.classList.add('hidden');
-        this.elements.updTxt.textContent = 'Connected';
-        this.updateStatus('ok');
-        this.addMapLayers();
-      });
-    },
-
-    addMapLayers() {
-      // Map layers will be added here for routes, ATC zones, etc.
-    },
-
-    startGlobeRotation() {
-      let rotation = 0;
-      const rotateGlobe = () => {
-        rotation += 0.02;
-        this.map.setBearing(rotation);
-        if (document.hidden === false) {
-          requestAnimationFrame(rotateGlobe);
-        }
-      };
-      rotateGlobe();
-    },
-
-    setupEventListeners() {
-      this.elements.togglePanel.addEventListener('click', () => {
-        this.elements.sidePanel.classList.toggle('open');
-      });
-
-      this.elements.spClose.addEventListener('click', () => {
-        this.elements.sidePanel.classList.remove('open');
-      });
-
-      this.elements.idrClose.addEventListener('click', () => {
-        this.elements.infoDrawer.classList.remove('open');
-        this.currentFlight = null;
-      });
-
-      this.elements.spTabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-          this.switchSidePanelTab(tab.dataset.tab);
-        });
-      });
-
-      this.elements.searchInput.addEventListener('input', (e) => {
-        this.performSearch(e.target.value);
-      });
-
-      document.addEventListener('click', (e) => {
-        if (!e.target.closest('.search-box')) {
-          this.elements.searchResults.classList.remove('open');
-        }
-      });
-
-      this.elements.legendToggle.addEventListener('click', () => {
-        this.elements.legendPanel.classList.toggle('open');
-        this.elements.legendToggle.classList.toggle('on');
-      });
-
-      this.elements.welcomeDismiss.addEventListener('click', () => {
-        this.elements.welcomeOverlay.classList.remove('show');
-        localStorage.setItem('vfm-welcome', 'dismissed');
-      });
-
-      this.elements.zoomIn.addEventListener('click', () => {
-        this.map.zoomTo(this.map.getZoom() + 1);
-      });
-
-      this.elements.zoomOut.addEventListener('click', () => {
-        this.map.zoomTo(this.map.getZoom() - 1);
-      });
-
-      this.elements.resetView.addEventListener('click', () => {
-        this.map.flyTo({
-          center: [0, 20],
-          zoom: 2,
-          pitch: 45,
-          bearing: 0,
-          duration: 1500
-        });
-      });
-
-      document.querySelectorAll('.ltgl').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const layer = btn.dataset.layer;
-          this.toggleLayer(layer, btn);
-        });
-      });
-    },
-
-    toggleLayer(layer, btn) {
-      this.layers[layer] = !this.layers[layer];
-      btn.classList.toggle('on');
-    },
-
-    showWelcome() {
-      if (!localStorage.getItem('vfm-welcome')) {
-        this.elements.welcomeOverlay.classList.add('show');
-      }
-    },
-
-    startDataFetch() {
-      this.elements.loadMsg.textContent = 'Fetching VATSIM data';
-      this.fetchVATSIM();
-
-      setInterval(() => {
-        this.fetchVATSIM();
-      }, 10000);
-    },
-
-    async fetchVATSIM() {
-      try {
-        const response = await fetch('https://data.vatsim.net/v3/vatsim-data.json');
-        if (!response.ok) throw new Error('VATSIM fetch failed');
-
-        const data = await response.json();
-
-        this.pilots = data.pilots || [];
-        this.atc = data.controllers || [];
-
-        this.elements.nPilots.textContent = this.pilots.length;
-        this.elements.nATC.textContent = this.atc.length;
-
-        const now = new Date();
-        this.elements.updTxt.textContent = now.toLocaleTimeString();
-        this.updateStatus('ok');
-
-        this.renderAircraft();
-        this.updateSidePanel();
-
-      } catch (err) {
-        console.error('Data fetch error:', err);
-        this.elements.updTxt.textContent = 'Error loading data';
-        this.updateStatus('err');
-      }
-    },
-
-    renderAircraft() {
-      document.querySelectorAll('.aircraft-marker').forEach(m => m.remove());
-
-      if (!this.layers.routes) return;
-
-      this.pilots.forEach(pilot => {
-        try {
-          const { latitude, longitude, altitude, heading, callsign } = pilot;
-
-          if (!latitude || !longitude) return;
-
-          const el = document.createElement('div');
-          el.className = 'aircraft-marker';
-          el.style.width = '24px';
-          el.style.height = '24px';
-          el.innerHTML = this.getAircraftSVG(pilot);
-          el.style.cursor = 'pointer';
-          el.style.transform = `rotate(${heading}deg)`;
-
-          el.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.showFlightInfo(pilot);
-          });
-
-          new mapboxgl.Marker(el)
-            .setLngLat([longitude, latitude])
-            .addTo(this.map);
-
-        } catch (e) {
-          console.error('Marker error:', e);
-        }
-      });
-
-      if (this.layers.atc) {
-        this.atc.forEach(controller => {
-          try {
-            const { latitude, longitude, facility, callsign } = controller;
-
-            if (!latitude || !longitude) return;
-
-            const el = document.createElement('div');
-            el.className = 'atc-marker';
-            el.style.width = '32px';
-            el.style.height = '32px';
-            el.style.background = 'rgba(34, 211, 238, 0.3)';
-            el.style.border = '2px solid rgba(34, 211, 238, 0.6)';
-            el.style.borderRadius = '50%';
-            el.style.cursor = 'pointer';
-            el.title = callsign;
-
-            el.addEventListener('click', (e) => {
-              e.stopPropagation();
-              this.showATCInfo(controller);
-            });
-
-            new mapboxgl.Marker(el)
-              .setLngLat([longitude, latitude])
-              .addTo(this.map);
-
-          } catch (e) {
-            console.error('ATC marker error:', e);
-          }
-        });
-      }
-    },
-
-    getAircraftSVG(pilot) {
-      const color = this.getAircraftColor(pilot.aircraft_icao);
-
-      return `
-        <svg width="24" height="24" viewBox="-12 -12 24 24" style="filter:drop-shadow(0 0 2px rgba(0,0,0,0.8))">
-          <path d="M0,-10 L2,-4 L8,0 L2,2 L0,8 L-2,2 L-8,0 L-2,-4 Z" fill="${color}" stroke="rgba(255,255,255,0.8)" stroke-width="0.5"/>
-        </svg>
-      `;
-    },
-
-    getAircraftColor(icao) {
-      if (!icao) return '#a78bfa';
-
-      const icaoStr = String(icao).toUpperCase();
-
-      if (['A380', 'A340', 'A350', '747', '777', '787'].some(t => icaoStr.includes(t))) {
-        return '#38bdf8';
-      }
-      if (['A320', '737', '757', '767', 'A321', 'A319'].some(t => icaoStr.includes(t))) {
-        return '#a78bfa';
-      }
-      if (['C172', 'C208', 'PA28', 'DA40', 'BE58'].some(t => icaoStr.includes(t))) {
-        return '#f472b6';
-      }
-      return '#a78bfa';
-    },
-
-    showFlightInfo(pilot) {
-      this.currentFlight = pilot;
-      const { callsign, aircraft_icao, latitude, longitude, altitude, ground_speed, heading, flight_plan } = pilot;
-
-      this.elements.idrCallsign.textContent = callsign;
-      this.elements.idrBadge.textContent = 'IN-FLIGHT';
-      this.elements.idrType.textContent = aircraft_icao || 'Unknown';
-
-      this.elements.idrTabs.innerHTML = `
-        <button class="idr-tab active" data-tab="info">Info</button>
-        <button class="idr-tab" data-tab="route">Route</button>
-      `;
-
-      let html = `
-        <div class="idr-grid">
-          <div class="idr-f">
-            <div class="idr-l">Altitude</div>
-            <div class="idr-v">${altitude.toLocaleString()} ft</div>
-          </div>
-          <div class="idr-f">
-            <div class="idr-l">Speed</div>
-            <div class="idr-v">${ground_speed} kt</div>
-          </div>
-          <div class="idr-f">
-            <div class="idr-l">Heading</div>
-            <div class="idr-v">${heading.toFixed(0)}°</div>
-          </div>
-          <div class="idr-f">
-            <div class="idr-l">Location</div>
-            <div class="idr-v">${latitude.toFixed(2)}, ${longitude.toFixed(2)}</div>
-          </div>
-        </div>
-      `;
-
-      if (flight_plan) {
-        const { departure, arrival, cruise_tas, flight_rules } = flight_plan;
-        html += `
-          <div class="idr-route">
-            <div class="idr-apt">${departure || '—'}</div>
-            <div class="idr-arr">→</div>
-            <div class="idr-apt">${arrival || '—'}</div>
-          </div>
-          <div class="idr-grid">
-            <div class="idr-f">
-              <div class="idr-l">Rules</div>
-              <div class="idr-v">${flight_rules || '—'}</div>
-            </div>
-            <div class="idr-f">
-              <div class="idr-l">Cruise Speed</div>
-              <div class="idr-v">${cruise_tas || '—'}</div>
-            </div>
-          </div>
-        `;
-      }
-
-      this.elements.idrBody.innerHTML = html;
-
-      this.elements.idrTabs.querySelectorAll('.idr-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-          this.elements.idrTabs.querySelectorAll('.idr-tab').forEach(t => t.classList.remove('active'));
-          tab.classList.add('active');
-
-          if (tab.dataset.tab === 'route') {
-            this.elements.idrBody.innerHTML = `
-              <div class="idr-route">
-                <div class="idr-apt">${flight_plan?.departure || '—'}</div>
-                <div class="idr-arr">→</div>
-                <div class="idr-apt">${flight_plan?.arrival || '—'}</div>
-              </div>
-              <div class="idr-remarks">${flight_plan?.route || 'No route filed'}</div>
-            `;
-          }
-        });
-      });
-
-      this.elements.infoDrawer.classList.add('open');
-    },
-
-    showATCInfo(controller) {
-      const { callsign, frequency, name, facility } = controller;
-
-      this.elements.idrCallsign.textContent = callsign;
-      this.elements.idrBadge.textContent = 'ATC';
-      this.elements.idrType.textContent = name || facility || 'Controller';
-
-      this.elements.idrTabs.innerHTML = `
-        <button class="idr-tab active" data-tab="info">Info</button>
-      `;
-
-      const html = `
-        <div class="idr-grid">
-          <div class="idr-f">
-            <div class="idr-l">Frequency</div>
-            <div class="idr-v">${frequency}</div>
-          </div>
-          <div class="idr-f">
-            <div class="idr-l">Facility</div>
-            <div class="idr-v">${facility || 'Unknown'}</div>
-          </div>
-        </div>
-        <div class="atis-voice-bar">
-          <button class="atis-speak-btn" id="atisPlayBtn">
-            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-            Listen ATIS
-          </button>
-        </div>
-      `;
-
-      this.elements.idrBody.innerHTML = html;
-      this.elements.infoDrawer.classList.add('open');
-
-      document.getElementById('atisPlayBtn')?.addEventListener('click', () => {
-        this.playATIS(callsign);
-      });
-    },
-
-    playATIS(callsign) {
-      if (!('speechSynthesis' in window)) return;
-
-      const utterance = new SpeechSynthesisUtterance(`This is ${callsign} ATIS`);
-      utterance.rate = 0.9;
-      window.speechSynthesis.speak(utterance);
-    },
-
-    performSearch(query) {
-      if (!query) {
-        this.elements.searchResults.classList.remove('open');
-        return;
-      }
-
-      const q = query.toUpperCase();
-      const results = [];
-
-      this.pilots.forEach(p => {
-        if (p.callsign.includes(q)) {
-          results.push({
-            type: 'pilot',
-            callsign: p.callsign,
-            route: `${p.flight_plan?.departure || '—'} to ${p.flight_plan?.arrival || '—'}`,
-            data: p
-          });
-        }
-      });
-
-      this.atc.forEach(a => {
-        if (a.callsign.includes(q)) {
-          results.push({
-            type: 'atc',
-            callsign: a.callsign,
-            route: a.facility || 'ATC',
-            data: a
-          });
-        }
-      });
-
-      if (results.length === 0) {
-        this.elements.searchResults.innerHTML = '<div class="sr-item">No results</div>';
-        this.elements.searchResults.classList.add('open');
-        return;
-      }
-
-      this.elements.searchResults.innerHTML = results.map(r => `
-        <div class="sr-item" data-type="${r.type}">
-          <div class="sr-cs">${r.callsign}</div>
-          <div class="sr-rt">${r.route}</div>
-        </div>
-      `).join('');
-
-      this.elements.searchResults.classList.add('open');
-
-      this.elements.searchResults.querySelectorAll('.sr-item').forEach((item, i) => {
-        item.addEventListener('click', () => {
-          if (results[i].type === 'pilot') {
-            this.showFlightInfo(results[i].data);
-          } else {
-            this.showATCInfo(results[i].data);
-          }
-          this.elements.searchResults.classList.remove('open');
-          this.elements.searchInput.value = '';
-        });
-      });
-    },
-
-    updateSidePanel() {
-      const activeTab = this.elements.sidePanel.querySelector('.sp-tab.active').dataset.tab;
-
-      let items = [];
-      if (activeTab === 'pilots') {
-        items = this.pilots.slice(0, 50);
-      } else {
-        items = this.atc.slice(0, 50);
-      }
-
-      this.elements.spList.innerHTML = items.map(item => {
-        const callsign = item.callsign;
-        const info = item.flight_plan ?
-          `${item.flight_plan.departure || '—'} → ${item.flight_plan.arrival || '—'}` :
-          (item.facility || 'ATC');
-
-        return `
-          <div class="sp-item">
-            <div class="sp-call">${callsign}</div>
-            <div class="sp-info">${info}</div>
-          </div>
-        `;
-      }).join('');
-
-      this.elements.spList.querySelectorAll('.sp-item').forEach((item, i) => {
-        item.addEventListener('click', () => {
-          if (activeTab === 'pilots') {
-            this.showFlightInfo(items[i]);
-          } else {
-            this.showATCInfo(items[i]);
-          }
-        });
-      });
-    },
-
-    switchSidePanelTab(tab) {
-      this.elements.spTabs.forEach(t => t.classList.remove('active'));
-      this.elements.sidePanel.querySelector(`[data-tab="${tab}"]`).classList.add('active');
-      this.updateSidePanel();
-    },
-
-    updateStatus(status) {
-      const badge = this.elements.updBadge;
-      badge.className = 'upd ' + status;
-    }
+  // ═════════════════════════════════════════════════════════════
+  // Virtual Flights 3D Globe - MapLibre GL JS Implementation
+  // Crafted by Pawan K Jajoo
+  // ═════════════════════════════════════════════════════════════
+
+  // --- CONFIGURATION ---
+  const CONFIG = {
+    vatsimUrl: 'https://data.vatsim.net/v3/vatsim-data.json',
+    corsProxy: 'https://corsproxy.io/?',
+    pollInterval: 15000, // 15 seconds
+    autoRotateDelay: 5000, // 5 seconds after last interaction
+    mapStyle: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
   };
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => App.init());
-  } else {
-    App.init();
+  // --- GLOBAL STATE ---
+  let map = null;
+  let pilots = [];
+  let controllers = [];
+  let selectedPilot = null;
+  let lastInteraction = Date.now();
+  let autoRotateTimer = null;
+  let pollTimer = null;
+
+  // --- MAP INITIALIZATION ---
+  function initMap() {
+    map = new maplibregl.Map({
+      container: 'map',
+      style: CONFIG.mapStyle,
+      center: [0, 20],
+      zoom: 2,
+      pitch: 45,
+      bearing: 0,
+      projection: { type: 'globe' }, // Enable globe projection
+      antialias: true
+    });
+
+    // Add map interaction listeners
+    map.on('movestart', resetAutoRotate);
+    map.on('dragstart', resetAutoRotate);
+    map.on('zoomstart', resetAutoRotate);
+    map.on('touchstart', resetAutoRotate);
+
+    // Update coordinates on mouse move
+    map.on('mousemove', (e) => {
+      const coords = e.lngLat;
+      document.getElementById('coords').textContent =
+        `${coords.lat.toFixed(2)}°, ${coords.lng.toFixed(2)}°`;
+    });
+
+    map.on('load', () => {
+      fadeLoader();
+      setupControls();
+      setupEventListeners();
+      fetchVATSIMData();
+      startAutoRotate();
+      pollTimer = setInterval(fetchVATSIMData, CONFIG.pollInterval);
+
+      // Show welcome popup on first load
+      setTimeout(() => {
+        document.getElementById('welcomePopup').classList.add('show');
+      }, 1200);
+    });
   }
-})();
+
+  // --- VATSIM DATA FETCHING ---
+  async function fetchVATSIMData() {
+    try {
+      const url = CONFIG.corsProxy + encodeURIComponent(CONFIG.vatsimUrl);
+      const response = await fetch(url);
+      const data = await response.json();
+
+      pilots = data.pilots || [];
+      controllers = data.controllers || [];
+
+      updateStats();
+      renderPilots();
+      renderControllers();
+      updateSidebar();
+
+      document.querySelector('.upd').classList.remove('stale');
+      document.querySelector('.upd').classList.add('ok');
+    } catch (error) {
+      console.error('VATSIM fetch failed:', error);
+      document.querySelector('.upd').classList.remove('ok');
+      document.querySelector('.upd').classList.add('stale');
+    }
+  }
+
+  // --- STATS UPDATE ---
+  function updateStats() {
+    document.getElementById('nPilots').textContent = pilots.length;
+    document.getElementById('nATC').textContent = controllers.length;
+  }
+
+  // --- RENDER PILOTS ---
+  function renderPilots() {
+    // Remove existing markers (simple approach)
+    if (map.querySourceFeatures) {
+      // Clear pilot layer
+    }
+
+    // Add aircraft to map via GeoJSON source
+    const features = pilots.map(pilot => ({
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: [pilot.longitude, pilot.latitude]
+      },
+      properties: {
+        callsign: pilot.callsign,
+        altitude: pilot.altitude,
+        heading: pilot.heading,
+        groundspeed: pilot.groundspeed,
+        aircraft: pilot.flight_plan?.aircraft_short || 'Unknown'
+      }
+    }));
+
+    // Create source if it doesn't exist
+    if (!map.getSource('pilots')) {
+      map.addSource('pilots', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: features }
+      });
+
+      // Add layer
+      map.addLayer({
+        id: 'pilots-layer',
+        type: 'circle',
+        source: 'pilots',
+        paint: {
+          'circle-radius': 6,
+          'circle-color': '#22d3ee',
+          'circle-opacity': 0.8,
+          'circle-stroke-width': 1,
+          'circle-stroke-color': '#ffffff'
+        }
+      });
+
+      map.on('click', 'pilots-layer', (e) => {
+        const callsign = e.features[0].properties.callsign;
+        const pilot = pilots.find(p => p.callsign === callsign);
+        if (pilot) openPilotDrawer(pilot);
+      });
+
+      map.on('mouseenter', 'pilots-layer', () => {
+        map.getCanvas().style.cursor = 'pointer';
+      });
+      map.on('mouseleave', 'pilots-layer', () => {
+        map.getCanvas().style.cursor = '';
+      });
+    } else {
+      // Update existing source
+      map.getSource('pilots').setData({ type: 'FeatureCollection', features: features });
+    }
+  }
+
+  // --- RENDER ATC ---
+  function renderControllers() {
+    // Similar to pilots
+    const features = controllers.map(ctrl => ({
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: [ctrl.longitude || 0, ctrl.latitude || 0]
+      },
+      properties: {
+        callsign: ctrl.callsign,
+        frequency: ctrl.frequency
+      }
+    }));
+
+    if (!map.getSource('atc')) {
+      map.addSource('atc', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: features }
+      });
+
+      map.addLayer({
+        id: 'atc-layer',
+        type: 'circle',
+        source: 'atc',
+        paint: {
+          'circle-radius': 8,
+          'circle-color': '#34d399',
+          'circle-opacity': 0.6,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#34d399'
+        }
+      });
+    } else {
+      map.getSource('atc').setData({ type: 'FeatureCollection', features: features });
+    }
+  }
+
+  // --- PILOT DRAWER ---
+  function openPilotDrawer(pilot) {
+    selectedPilot = pilot;
+    const fp = pilot.flight_plan || {};
+
+    const drawerTitle = document.getElementById('drawerTitle');
+    const drawerContent = document.getElementById('drawerContent');
+
+    drawerTitle.textContent = pilot.callsign;
+
+    const routeHtml = `
+      <div><strong>Route:</strong> ${fp.departure || '----'} → ${fp.arrival || '----'}</div>
+      <div><strong>Aircraft:</strong> ${fp.aircraft_short || 'Unknown'}</div>
+      <div><strong>Altitude:</strong> ${pilot.altitude?.toLocaleString() || '—'} ft</div>
+    `;
+
+    const liveHtml = `
+      <div><strong>Altitude:</strong> ${pilot.altitude?.toLocaleString() || '—'} ft</div>
+      <div><strong>Speed:</strong> ${pilot.groundspeed || 0} kt</div>
+      <div><strong>Heading:</strong> ${pilot.heading || 0}°</div>
+      <div><strong>Server:</strong> ${pilot.server || 'Unknown'}</div>
+    `;
+
+    const remarksHtml = `
+      <div><strong>Route:</strong> ${fp.route || 'Not filed'}</div>
+      <div><strong>Remarks:</strong> ${fp.remarks || 'None'}</div>
+    `;
+
+    drawerContent.innerHTML = routeHtml;
+
+    // Setup tabs
+    document.querySelectorAll('.drawer-tab').forEach(tab => {
+      tab.classList.remove('active');
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.drawer-tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+
+        if (this.dataset.tab === 'route') drawerContent.innerHTML = routeHtml;
+        else if (this.dataset.tab === 'live') drawerContent.innerHTML = liveHtml;
+        else if (this.dataset.tab === 'remarks') drawerContent.innerHTML = remarksHtml;
+      });
+    });
+    document.querySelector('.drawer-tab').classList.add('active');
+
+    document.getElementById('infoDrawer').classList.add('open');
+  }
+
+  function closeDrawer() {
+    document.getElementById('infoDrawer').classList.remove('open');
+    selectedPilot = null;
+  }
+
+  // --- SIDEBAR / TRAFFIC LIST ---
+  function updateSidebar() {
+    const list = document.getElementById('trafficList');
+    const items = [
+      ...pilots.slice(0, 10).map(p => ({
+        type: 'pilot',
+        callsign: p.callsign,
+        altitude: p.altitude,
+        speed: p.groundspeed,
+        route: `${p.flight_plan?.departure || '—'}-${p.flight_plan?.arrival || '—'}`
+      })),
+      ...controllers.slice(0, 5).map(c => ({
+        type: 'atc',
+        callsign: c.callsign,
+        frequency: c.frequency
+      }))
+    ];
+
+    list.innerHTML = items.map(item => {
+      if (item.type === 'pilot') {
+        return `
+          <div class="traffic-item" onclick="findPilot('${item.callsign}')">
+            <span class="traffic-call">${item.callsign}</span>
+            <div class="traffic-info">${item.altitude.toLocaleString()} ft | ${item.speed} kt</div>
+            <div class="traffic-info">${item.route}</div>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="traffic-item">
+            <span class="traffic-call">${item.callsign}</span>
+            <div class="traffic-info">${item.frequency}</div>
+          </div>
+        `;
+      }
+    }).join('');
+  }
+
+  function findPilot(callsign) {
+    const pilot = pilots.find(p => p.callsign === callsign);
+    if (pilot) {
+      map.flyTo({
+        center: [pilot.longitude, pilot.latitude],
+        zoom: 5,
+        duration: 1000
+      });
+      openPilotDrawer(pilot);
+    }
+  }
+
+  // --- AUTO ROTATE ---
+  function startAutoRotate() {
+    if (autoRotateTimer) return;
+    autoRotateTimer = setInterval(() => {
+      if (Date.now() - lastInteraction > CONFIG.autoRotateDelay) {
+        const bearing = (map.getBearing() + 0.5) % 360;
+        map.setBearing(bearing);
+      }
+    }, 100);
+  }
+
+  function resetAutoRotate() {
+    lastInteraction = Date.now();
+  }
+
+  // --- CONTROLS SETUP ---
+  function setupControls() {
+    document.getElementById('zoomIn').addEventListener('click', () => map.zoomIn());
+    document.getElementById('zoomOut').addEventListener('click', () => map.zoomOut());
+    document.getElementById('resetView').addEventListener('click', () => {
+      map.flyTo({ center: [0, 20], zoom: 2, bearing: 0, pitch: 45, duration: 1000 });
+    });
+
+    // Layer toggles
+    document.querySelectorAll('.layer-toggle').forEach(btn => {
+      btn.addEventListener('click', function() {
+        this.classList.toggle('active');
+        const layer = this.dataset.layer;
+        const visibility = this.classList.contains('active') ? 'visible' : 'none';
+
+        if (layer === 'aircraft' && map.getLayer('pilots-layer')) {
+          map.setLayoutProperty('pilots-layer', 'visibility', visibility);
+        } else if (layer === 'atc' && map.getLayer('atc-layer')) {
+          map.setLayoutProperty('atc-layer', 'visibility', visibility);
+        }
+      });
+    });
+
+    // Legend toggle
+    const legend = document.getElementById('legend');
+    const legendBtn = document.createElement('button');
+    legendBtn.style.cssText = 'position:absolute;bottom:50px;left:14px;z-index:1400;width:36px;height:36px;border-radius:10px;background:var(--bg3s);border:1px solid var(--bdr);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s ease;font-size:14px;backdrop-filter:blur(8px)';
+    legendBtn.textContent = '⚙';
+    legendBtn.title = 'Legend';
+    legendBtn.addEventListener('click', () => legend.classList.toggle('open'));
+    document.querySelector('.content').appendChild(legendBtn);
+  }
+
+  // --- EVENT LISTENERS ---
+  function setupEventListeners() {
+    document.getElementById('togglePanel').addEventListener('click', () => {
+      document.getElementById('sidePanel').classList.toggle('open');
+    });
+
+    document.getElementById('closeSidePanel').addEventListener('click', () => {
+      document.getElementById('sidePanel').classList.remove('open');
+    });
+
+    document.getElementById('closeDrawer').addEventListener('click', closeDrawer);
+
+    document.getElementById('closeWelcome').addEventListener('click', () => {
+      document.getElementById('welcomePopup').classList.remove('show');
+    });
+
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase();
+      // Filter sidebar
+      const items = document.querySelectorAll('.traffic-item');
+      items.forEach(item => {
+        const text = item.textContent.toLowerCase();
+        item.style.display = text.includes(query) ? 'block' : 'none';
+      });
+    });
+  }
+
+  // --- LOADING SCREEN ---
+  function fadeLoader() {
+    setTimeout(() => {
+      document.getElementById('loader').classList.add('fade');
+    }, 800);
+  }
+
+  // Initialize on document ready
+  document.addEventListener('DOMContentLoaded', initMap);
 </script>
 
 </body>

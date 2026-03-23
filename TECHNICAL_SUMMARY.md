@@ -1,28 +1,28 @@
-# Technical Implementation Summary
+# Technical Implementation Summary - MapLibre GL JS Edition
 
 ## Architecture Overview
 
-The 3D Globe visualization is built as a single self-contained HTML file with embedded Mapbox GL JS library, using native globe projection for smooth rendering. It fetches real-time data from VATSIM, IVAO, and POSCON networks and displays interactive flight markers with detailed information panels.
+The 3D Globe visualization is built as a single self-contained HTML file with **MapLibre GL JS v4.7.1** (free, open-source, no API key required), using native globe projection for smooth rendering. It fetches real-time data from VATSIM network and displays interactive flight markers with detailed information panels.
 
 ## Core Components
 
-### 1. Mapbox GL JS Globe
+### 1. MapLibre GL JS Globe
 
-- **Map Library**: Mapbox GL JS v3.3.0 (loaded from CDN)
+- **Map Library**: MapLibre GL JS v4.7.1 (loaded from CDN, free and open-source)
 - **Projection**: Native 'globe' projection for 3D globe effect
-- **Style**: Dark theme (mapbox://styles/mapbox/dark-v11)
+- **Style**: Carto Dark Matter vector tiles (free, no API key required)
+- **Style URL**: https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json
 - **Initial View**: Center at [0, 20], zoom level 2, pitch 45 degrees
-- **Access Token**: Public demo token (YOUR_MAPBOX_PUBLIC_TOKEN)
+- **API Key**: None required - works out of the box
 - **Rendering**: GPU-accelerated with smooth animations
 
 ### 2. Data Pipeline
 
-**Parallel fetch strategy**:
-- VATSIM: `https://data.vatsim.net/v3/vatsim-data.json`
-- IVAO: `https://api.ivao.aero/v2/tracker/whazzup` (optional)
-- POSCON: Similar real-time API endpoints
+**Data Source**:
+- VATSIM: `https://data.vatsim.net/v3/vatsim-data.json` (primary)
+- CORS Proxy: `https://corsproxy.io/?` (for browser access)
 
-**Update Cycle**: 10-second refresh interval with exponential backoff on errors
+**Update Cycle**: 15-second refresh interval (configurable via CONFIG.pollInterval)
 
 **Data Normalization**: Each network converted to common flight object structure:
 ```javascript
@@ -186,18 +186,18 @@ Click handler → showFlightInfo() → populate info drawer
 
 ```
 Virtual Flights Map 3D Globe/
-  index.html                - Single 1,352-line HTML file (all-in-one)
+  index.html                - Single 932-line HTML file (all-in-one)
   README.md                 - User documentation and features
   TECHNICAL_SUMMARY.md      - This architecture document
 ```
 
 ## Browser Requirements
 
-- Mapbox GL JS support (Chrome 51+, Firefox 55+, Safari 11+, Edge 79+)
+- MapLibre GL JS support (Chrome 60+, Firefox 60+, Safari 12+, Edge 79+)
 - JavaScript ES6+ support
-- Fetch API with CORS
-- Web Workers for speech synthesis (optional ATIS feature)
-- localStorage for welcome dismissal persistence
+- Fetch API with CORS support
+- localStorage (optional, for welcome dismissal)
+- No API keys or authentication required
 
 ## API Rate Limits and Strategy
 
@@ -207,13 +207,14 @@ Virtual Flights Map 3D Globe/
 
 ## Extension Points
 
-- Layer toggles can be connected to real GeoJSON layers (Weather, FIR)
-- IVAO and POSCON data sources can be added with normalization
-- Custom map styles via different Mapbox style URLs
+- Layer toggles can be connected to real GeoJSON layers (Weather, FIR, Routes)
 - Flight path visualization via GeoJSON LineStrings
 - ATC coverage areas via GeoJSON Polygons
-- 3D altitude visualization via Mapbox fill-extrusion
+- 3D altitude visualization via MapLibre fill-extrusion
 - WebSocket real-time updates replacing API polling
+- Custom vector tile sources for proprietary data
+- Day/night terminator visualization
+- Great circle route visualization for flights
 
 ## Limitations
 
@@ -225,8 +226,10 @@ Virtual Flights Map 3D Globe/
 
 ## Code Quality
 
-- Comprehensive comments throughout
+- Comprehensive section-based comments
 - Clean separation: HTML structure → CSS styling → JavaScript logic
 - Async/await patterns for data fetching
-- Object-oriented App singleton for state management
-- No external dependencies (Mapbox GL JS only via CDN)
+- Modular function design with clear responsibilities
+- No external dependencies (MapLibre GL JS v4.7.1 via CDN only)
+- Single self-contained file - no build process needed
+- Works by opening index.html directly in any browser
