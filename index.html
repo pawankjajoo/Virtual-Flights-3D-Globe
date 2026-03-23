@@ -570,43 +570,79 @@
 
   // --- MAP INITIALIZATION ---
   function initMap() {
-    map = new maplibregl.Map({
-      container: 'map',
-      style: CONFIG.mapStyle,
-      center: [0, 20],
-      zoom: 2,
-      pitch: 45,
-      bearing: 0,
-      projection: 'globe', // Enable globe projection
-      antialias: true
-    });
+    // Build a globe-enabled style by fetching the Carto base and injecting globe config
+    fetch(CONFIG.mapStyle)
+      .then(r => r.json())
+      .then(baseStyle => {
+        // Inject globe projection and atmosphere into the style
+        baseStyle.projection = { type: 'globe' };
+        baseStyle.sky = {
+          'atmosphere-blend': [
+            'interpolate', ['linear'], ['zoom'],
+            0, 1, 5, 1, 7, 0
+          ]
+        };
 
-    // Add map interaction listeners
-    map.on('movestart', resetAutoRotate);
-    map.on('dragstart', resetAutoRotate);
-    map.on('zoomstart', resetAutoRotate);
-    map.on('touchstart', resetAutoRotate);
+        map = new maplibregl.Map({
+          container: 'map',
+          style: baseStyle,
+          center: [20, 20],
+          zoom: 1.5,
+          pitch: 30,
+          bearing: 0,
+          renderWorldCopies: false,
+          antialias: true
+        });
 
-    // Update coordinates on mouse move
-    map.on('mousemove', (e) => {
-      const coords = e.lngLat;
-      document.getElementById('coords').textContent =
-        `${coords.lat.toFixed(2)}°, ${coords.lng.toFixed(2)}°`;
-    });
+        // Add map interaction listeners
+        map.on('movestart', resetAutoRotate);
+        map.on('dragstart', resetAutoRotate);
+        map.on('zoomstart', resetAutoRotate);
+        map.on('touchstart', resetAutoRotate);
 
-    map.on('load', () => {
-      fadeLoader();
-      setupControls();
-      setupEventListeners();
-      fetchVATSIMData();
-      startAutoRotate();
-      pollTimer = setInterval(fetchVATSIMData, CONFIG.pollInterval);
+        // Update coordinates on mouse move
+        map.on('mousemove', (e) => {
+          const coords = e.lngLat;
+          document.getElementById('coords').textContent =
+            `${coords.lat.toFixed(2)}°, ${coords.lng.toFixed(2)}°`;
+        });
 
-      // Show welcome popup on first load
-      setTimeout(() => {
-        document.getElementById('welcomePopup').classList.add('show');
-      }, 1200);
-    });
+        // Use 'idle' event as reliable fallback (fires after all tiles rendered)
+        map.once('idle', () => {
+          fadeLoader();
+          setupControls();
+          setupEventListeners();
+          fetchVATSIMData();
+          startAutoRotate();
+          pollTimer = setInterval(fetchVATSIMData, CONFIG.pollInterval);
+
+          // Show welcome popup on first load
+          setTimeout(() => {
+            document.getElementById('welcomePopup').classList.add('show');
+          }, 1200);
+        });
+      })
+      .catch(err => {
+        console.error('Failed to load map style:', err);
+        // Fallback: use style URL directly
+        map = new maplibregl.Map({
+          container: 'map',
+          style: CONFIG.mapStyle,
+          center: [20, 20],
+          zoom: 1.5,
+          pitch: 30,
+          antialias: true
+        });
+        map.once('idle', () => {
+          map.setProjection({type: 'globe'});
+          fadeLoader();
+          setupControls();
+          setupEventListeners();
+          fetchVATSIMData();
+          startAutoRotate();
+          pollTimer = setInterval(fetchVATSIMData, CONFIG.pollInterval);
+        });
+      });
   }
 
   // --- VATSIM DATA FETCHING ---
