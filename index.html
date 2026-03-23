@@ -1260,7 +1260,12 @@
       document.getElementById('legend').classList.toggle('open');
     });
 
-    const controlsDiv = document.querySelector('.map-controls');
+    let controlsDiv = document.querySelector('.map-controls');
+    if (!controlsDiv) {
+      controlsDiv = document.createElement('div');
+      controlsDiv.className = 'map-controls';
+      document.querySelector('.content').appendChild(controlsDiv);
+    }
     controlsDiv.insertBefore(zoomInBtn, controlsDiv.firstChild);
     controlsDiv.appendChild(zoomOutBtn);
     controlsDiv.appendChild(resetBtn);
