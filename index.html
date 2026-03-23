@@ -13,7 +13,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Virtual Flights Map 3D Globe | Pushstart Simulators">
 
-  <!-- MapLibre GL JS v4.7.1 - Free, open-source, no API key needed -->
+  <!-- MapLibre GL JS v5.21.0 - Free, open-source, no API key needed -->
   <link href="https://unpkg.com/maplibre-gl@5.21.0/dist/maplibre-gl.css" rel="stylesheet" />
   <script src="https://unpkg.com/maplibre-gl@5.21.0/dist/maplibre-gl.js"></script>
 
@@ -28,6 +28,8 @@
       --bdr:#1a2844;--acc:#22d3ee;--acc2:#22d3ee44;
       --grn:#34d399;--grn2:#34d39944;--amb:#fbbf24;--red:#f87171;
       --t1:#e2e8f0;--t2:#94a3b8;--t3:#475569;
+      --alt-ground:#d1d5db;--alt-low:#06b6d4;--alt-mid:#3b82f6;
+      --alt-high:#22d3ee;--alt-upper:#fbbf24;
     }
 
     /* Full-viewport layout - no scrollbars, flexbox column structure */
@@ -128,19 +130,41 @@
     .layer-toggle:hover{border-color:var(--acc);color:var(--t1)}
     .layer-toggle.active{background:var(--acc);border-color:var(--acc);color:var(--bg);box-shadow:0 0 12px rgba(34,211,238,.4)}
 
+    /* ─ ALTITUDE BAND PANEL ─ */
+    #altitudePanel{
+      position:absolute;top:295px;right:14px;z-index:1400;
+      background:var(--bg3s);border:1px solid var(--bdr);border-radius:12px;
+      padding:10px;max-width:160px;display:none;backdrop-filter:blur(8px);
+    }
+    #altitudePanel.open{display:block}
+    .alt-band-item{
+      display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:10px;cursor:pointer;
+      font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;
+    }
+    .alt-band-item:last-child{margin-bottom:0}
+    .alt-band-checkbox{width:14px;height:14px;border:1px solid var(--bdr);border-radius:3px;
+      display:flex;align-items:center;justify-content:center;background:transparent;cursor:pointer;transition:all .18s}
+    .alt-band-checkbox.checked{background:var(--acc);border-color:var(--acc)}
+    .alt-band-checkbox.checked::after{content:'✓';color:var(--bg);font-size:9px;font-weight:700}
+    .alt-band-label{color:var(--t2);flex:1}
+    .alt-band-color{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+
     /* ─ LEGEND PANEL ─ */
     #legend{
       position:absolute;bottom:50px;left:14px;z-index:1400;
       background:var(--bg3s);border:1px solid var(--bdr);border-radius:12px;
-      padding:12px;max-width:180px;max-height:240px;overflow-y:auto;
+      padding:12px;max-width:200px;max-height:280px;overflow-y:auto;
       backdrop-filter:blur(12px);display:none;
       font-size:11px;font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;
     }
     #legend.open{display:block}
-    .legend-item{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+    .legend-section{margin-bottom:12px}
+    .legend-section:last-child{margin-bottom:0}
+    .legend-section-title{font-weight:600;color:var(--acc);margin-bottom:6px;font-size:10px;text-transform:uppercase}
+    .legend-item{display:flex;align-items:center;gap:8px;margin-bottom:6px}
     .legend-item:last-child{margin-bottom:0}
     .legend-color{width:12px;height:12px;border-radius:3px;flex-shrink:0}
-    .legend-label{color:var(--t2)}
+    .legend-label{color:var(--t2);font-size:10px}
 
     /* ─ ATIS VOICE BUTTON ─ */
     .atis-btn{
@@ -222,7 +246,6 @@
       display:none;
     }
     #welcomePopup.show{display:block}
-    #welcomePopup::backdrop{background:rgba(9,13,24,.8)}
 
     .popup-title{font-size:14px;font-weight:700;margin-bottom:12px;color:var(--acc)}
     .popup-text{font-size:11px;color:var(--t2);line-height:1.6;margin-bottom:8px}
@@ -352,6 +375,7 @@
       #sidePanel{width:100%}
       .map-controls{bottom:14px;right:10px}
       .layer-toggles{top:54px;right:10px}
+      #altitudePanel{top:250px;right:10px;max-width:140px}
     }
   </style>
 </head>
@@ -401,550 +425,768 @@
   </div>
 
   <!-- ═══ CONTENT ═══ -->
-  <div class="content" id="content">
-    <!-- LOADING SCREEN -->
+  <div class="content">
+    <div id="map"></div>
+
+    <!-- Search overlay -->
+    <div class="search-box">
+      <input type="text" id="searchInput" class="search-input" placeholder="Search airports, callsigns...">
+    </div>
+
+    <!-- Layer toggles (right side) -->
+    <div class="layer-toggles">
+      <button class="layer-toggle active" id="toggleAircraft" title="Toggle Aircraft" data-layer="aircraft">A</button>
+      <button class="layer-toggle active" id="toggleATC" title="Toggle ATC" data-layer="atc">C</button>
+      <button class="layer-toggle" id="toggleRoutes" title="Toggle Routes" data-layer="routes">R</button>
+      <button class="layer-toggle" id="toggleWeather" title="Toggle Weather" data-layer="weather">W</button>
+      <button class="layer-toggle" id="toggleAltitude" title="Altitude Bands" data-layer="altitude">ALT</button>
+    </div>
+
+    <!-- Altitude band panel -->
+    <div id="altitudePanel">
+      <div class="alt-band-item">
+        <div class="alt-band-checkbox checked" data-alt="ground"></div>
+        <span class="alt-band-label">Ground</span>
+        <div class="alt-band-color" style="background:var(--alt-ground)"></div>
+      </div>
+      <div class="alt-band-item">
+        <div class="alt-band-checkbox checked" data-alt="low"></div>
+        <span class="alt-band-label">Low</span>
+        <div class="alt-band-color" style="background:var(--alt-low)"></div>
+      </div>
+      <div class="alt-band-item">
+        <div class="alt-band-checkbox checked" data-alt="mid"></div>
+        <span class="alt-band-label">Mid</span>
+        <div class="alt-band-color" style="background:var(--alt-mid)"></div>
+      </div>
+      <div class="alt-band-item">
+        <div class="alt-band-checkbox checked" data-alt="high"></div>
+        <span class="alt-band-label">High</span>
+        <div class="alt-band-color" style="background:var(--alt-high)"></div>
+      </div>
+      <div class="alt-band-item">
+        <div class="alt-band-checkbox checked" data-alt="upper"></div>
+        <span class="alt-band-label">Upper</span>
+        <div class="alt-band-color" style="background:var(--alt-upper)"></div>
+      </div>
+    </div>
+
+    <!-- Legend panel -->
+    <div id="legend">
+      <div class="legend-section">
+        <div class="legend-section-title">Altitude Bands</div>
+        <div class="legend-item">
+          <div class="legend-color" style="background:var(--alt-ground)"></div>
+          <div class="legend-label">Ground (0-1K ft)</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background:var(--alt-low)"></div>
+          <div class="legend-label">Low (1-10K ft)</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background:var(--alt-mid)"></div>
+          <div class="legend-label">Mid (10-25K ft)</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background:var(--alt-high)"></div>
+          <div class="legend-label">High (25-35K ft)</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background:var(--alt-upper)"></div>
+          <div class="legend-label">Upper (35K+ ft)</div>
+        </div>
+      </div>
+      <div class="legend-section">
+        <div class="legend-section-title">Other</div>
+        <div class="legend-item">
+          <div class="legend-color" style="background:var(--grn)"></div>
+          <div class="legend-label">ATC Stations</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info drawer (bottom) -->
+    <div id="infoDrawer">
+      <div class="drawer-header">
+        <div class="drawer-title" id="drawerTitle">Aircraft Details</div>
+        <button class="drawer-close" id="closeDrawer">✕</button>
+      </div>
+      <div class="drawer-tabs">
+        <button class="drawer-tab active" data-tab="info">INFO</button>
+        <button class="drawer-tab" data-tab="flight">FLIGHT</button>
+      </div>
+      <div class="drawer-content">
+        <div id="tabInfo" class="tab-content">Loading...</div>
+        <div id="tabFlight" class="tab-content" style="display:none">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Side panel (right slide-out) -->
+    <div id="sidePanel">
+      <div class="side-header">
+        <div class="side-title">Traffic</div>
+        <button class="side-close" id="closeSidePanel">✕</button>
+      </div>
+      <div class="side-content" id="trafficList">
+        <div style="text-align:center;color:var(--t3);padding:20px">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Welcome popup -->
+    <div id="welcomePopup">
+      <div class="popup-title">Welcome to Virtual Flights</div>
+      <div class="popup-text">Real-time 3D globe with live VATSIM traffic, ATC stations, and altitude-based visualization. Click around the globe to explore, use the search bar to find aircraft or airports, and check layer toggles for different data views.</div>
+      <button class="popup-button" onclick="document.getElementById('welcomePopup').classList.remove('show')">Get Started</button>
+    </div>
+
+    <!-- Loading screen -->
     <div id="loader">
-      <div class="load-dot" style="top:14%;left:11%;animation-delay:0s"></div>
-      <div class="load-dot" style="top:70%;left:87%;animation-delay:.7s"></div>
-      <div class="load-dot" style="top:38%;left:92%;animation-delay:1.4s"></div>
-      <div class="load-dot" style="top:83%;left:22%;animation-delay:2.1s"></div>
-      <div class="load-dot" style="top:22%;left:78%;animation-delay:.35s"></div>
-      <div class="load-dot" style="top:60%;left:6%;animation-delay:1.8s"></div>
-      <div class="load-dot" style="top:10%;left:48%;animation-delay:1.05s"></div>
-      <div class="load-dot" style="top:88%;left:62%;animation-delay:.55s"></div>
-
+      <div class="load-dot" style="top:20%;left:30%;animation-delay:.2s"></div>
+      <div class="load-dot" style="top:65%;left:10%;animation-delay:.4s"></div>
+      <div class="load-dot" style="top:30%;right:15%;animation-delay:.6s"></div>
+      <div class="load-dot" style="bottom:20%;right:5%;animation-delay:.8s"></div>
       <div class="load-center">
-        <img class="load-logo-img"
-             src="https://static.wixstatic.com/media/8cef4e_a9f713cedfff4ea88689521db953de89~mv2.png/v1/fill/w_300,h_65,al_c,q_85,enc_avif,quality_auto/White%20logo%20-%20no%20background.png"
-             alt="PushStart Simulators"
-             onerror="this.style.display='none'">
-
         <div class="plane-scene">
           <div class="plane-ring"></div>
           <div class="plane-ring-2"></div>
           <div class="plane-trail">
             <span></span><span></span><span></span><span></span><span></span>
           </div>
-          <svg class="plane-icon" width="56" height="56" viewBox="0 0 24 24" fill="none">
-            <path d="M21.5 2L2 10.8L9.8 13.2L12.5 21.5L21.5 2Z"
-                  fill="rgba(34,211,238,0.12)" stroke="#22d3ee"
-                  stroke-width="1.5" stroke-linejoin="round"/>
-            <path d="M9.8 13.2L21.5 2" stroke="#22d3ee"
-                  stroke-width="1.5" stroke-linecap="round"/>
-            <path d="M9.8 13.2L12.8 17.5" stroke="rgba(34,211,238,0.45)"
-                  stroke-width="1.2" stroke-linecap="round"/>
+          <svg class="plane-icon" width="48" height="48" viewBox="0 0 48 48" fill="none">
+            <path d="M24 6L36 18V30L24 28L12 30V18L24 6Z" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round" opacity="0.9"/>
+            <circle cx="24" cy="24" r="3" fill="currentColor"/>
           </svg>
         </div>
-
-        <div style="display:flex;flex-direction:column;align-items:center;gap:7px">
-          <div class="load-brand">@PushStart<span>Sims</span></div>
-          <div class="load-msg-row">
-            <span id="loadMsg">Loading 3D globe</span>
-            <span class="load-dots-anim">
-              <span></span><span></span><span></span>
-            </span>
-          </div>
+        <div class="load-brand">Virtual<span>Flights</span></div>
+        <div class="load-msg-row">
+          <span>Initializing globe</span>
+          <div class="load-dots-anim"><span></span><span></span><span></span></div>
         </div>
-
         <div class="load-bar"><div class="load-bar-fill"></div></div>
       </div>
     </div>
-
-    <!-- 3D GLOBE MAP -->
-    <div id="map"></div>
-
-    <!-- SEARCH BOX -->
-    <div class="search-box">
-      <input type="text" id="searchInput" class="search-input" placeholder="Search callsigns, airports...">
-    </div>
-
-    <!-- LAYER TOGGLES (Right side) -->
-    <div class="layer-toggles">
-      <button class="layer-toggle active" data-layer="aircraft" title="Toggle aircraft">A</button>
-      <button class="layer-toggle active" data-layer="atc" title="Toggle ATC">C</button>
-      <button class="layer-toggle" data-layer="routes" title="Toggle routes">R</button>
-    </div>
-
-    <!-- MAP CONTROLS -->
-    <div class="map-controls">
-      <button class="map-control-btn" id="zoomIn" title="Zoom in">+</button>
-      <button class="map-control-btn" id="zoomOut" title="Zoom out">-</button>
-      <button class="map-control-btn" id="resetView" title="Reset view">⟳</button>
-    </div>
-
-    <!-- LEGEND PANEL -->
-    <div id="legend">
-      <div style="font-weight:600;color:var(--acc);margin-bottom:8px;text-transform:uppercase;font-size:10px;letter-spacing:.04em">Aircraft Types</div>
-      <div class="legend-item">
-        <div class="legend-color" style="background:var(--acc)"></div>
-        <span class="legend-label">Commercial</span>
-      </div>
-      <div class="legend-item">
-        <div class="legend-color" style="background:var(--grn)"></div>
-        <span class="legend-label">General Aviation</span>
-      </div>
-      <div class="legend-item">
-        <div class="legend-color" style="background:var(--amb)"></div>
-        <span class="legend-label">Helicopter</span>
-      </div>
-      <div class="legend-item">
-        <div class="legend-color" style="background:var(--red)"></div>
-        <span class="legend-label">Military</span>
-      </div>
-      <div style="font-weight:600;color:var(--acc);margin:12px 0 8px;text-transform:uppercase;font-size:10px;letter-spacing:.04em">ATC</div>
-      <div class="legend-item">
-        <div class="legend-color" style="background:var(--grn)"></div>
-        <span class="legend-label">Active Control</span>
-      </div>
-    </div>
-
-    <!-- ATIS VOICE BUTTON -->
-    <button class="atis-btn" id="atisBtn" title="ATIS voice (coming soon)">🔊</button>
-
-    <!-- INFO DRAWER (Bottom) -->
-    <div id="infoDrawer">
-      <div class="drawer-header">
-        <div class="drawer-title" id="drawerTitle">Flight Details</div>
-        <button class="drawer-close" id="closeDrawer">✕</button>
-      </div>
-      <div class="drawer-tabs">
-        <button class="drawer-tab active" data-tab="route">ROUTE</button>
-        <button class="drawer-tab" data-tab="live">LIVE</button>
-        <button class="drawer-tab" data-tab="remarks">RMKS</button>
-      </div>
-      <div class="drawer-content" id="drawerContent"></div>
-    </div>
-
-    <!-- SIDE PANEL (Right) -->
-    <div id="sidePanel">
-      <div class="side-header">
-        <span class="side-title">Traffic</span>
-        <button class="side-close" id="closeSidePanel">✕</button>
-      </div>
-      <div class="side-content" id="trafficList"></div>
-    </div>
-  </div>
-
-  <!-- WELCOME POPUP -->
-  <div id="welcomePopup">
-    <div class="popup-title">Welcome to 3D Globe View</div>
-    <div class="popup-text">Experience live VATSIM traffic in stunning 3D.</div>
-    <div class="popup-text" style="font-size:10px">Click aircraft to view details. Use layer toggles (A/C/R) to customize your view.</div>
-    <button class="popup-button" id="closeWelcome">Get Started</button>
   </div>
 
   <!-- ═══ FOOTER ═══ -->
   <div class="footer">
-    <div style="flex:1">Data source: VATSIM</div>
     <div class="upd ok">
-      <span style="width:6px;height:6px;border-radius:50%;background:var(--grn);display:inline-block"></span>
-      Live
+      <span id="updateStatus">●</span>
+      <span id="updateTime">Live</span>
     </div>
-    <div class="coords" id="coords">0°, 0°</div>
+    <div style="flex:1"></div>
+    <div class="coords" id="coordDisplay">0.00°, 0.00°</div>
   </div>
 </div>
 
 <script>
-  // ═════════════════════════════════════════════════════════════
-  // Virtual Flights 3D Globe - MapLibre GL JS Implementation
-  // Crafted by Pawan K Jajoo
-  // ═════════════════════════════════════════════════════════════
-
-  // --- CONFIGURATION ---
+  // ═════════════════════════════════════════════════════════════════════
+  // CONFIGURATION
+  // ═════════════════════════════════════════════════════════════════════
   const CONFIG = {
-    vatsimUrl: 'https://data.vatsim.net/v3/vatsim-data.json',
-    corsProxy: 'https://corsproxy.io/?',
-    pollInterval: 15000, // 15 seconds
-    autoRotateDelay: 5000, // 5 seconds after last interaction
-    mapStyle: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
+    VATSIM_URL: 'https://data.vatsim.net/v3/vatsim-data.json',
+    CORS_PROXY: 'https://corsproxy.io/?',
+    POLL_INTERVAL: 15000,
+    STYLE_URL: 'https://basemaps.cartocdn.com/gl/dark-matter-nolabels/style.json'
   };
 
-  // --- GLOBAL STATE ---
-  let map = null;
-  let pilots = [];
-  let controllers = [];
-  let selectedPilot = null;
-  let lastInteraction = Date.now();
-  let autoRotateTimer = null;
-  let pollTimer = null;
+  // ═════════════════════════════════════════════════════════════════════
+  // STATE
+  // ═════════════════════════════════════════════════════════════════════
+  const STATE = {
+    map: null,
+    mapReady: false,
+    pilots: [],
+    controllers: [],
+    lastUpdate: null,
+    selectedPilot: null,
+    layerVisibility: {
+      aircraft: true,
+      atc: true,
+      routes: false,
+      weather: false
+    },
+    altitudeBands: {
+      ground: true,
+      low: true,
+      mid: true,
+      high: true,
+      upper: true
+    }
+  };
 
-  // --- MAP INITIALIZATION ---
-  function initMap() {
-    // Build a globe-enabled style by fetching the Carto base and injecting globe config
-    fetch(CONFIG.mapStyle)
-      .then(r => r.json())
-      .then(baseStyle => {
-        // Inject globe projection and atmosphere into the style
-        baseStyle.projection = { type: 'vertical-perspective' };
-        baseStyle.sky = {
-          'atmosphere-blend': [
-            'interpolate', ['linear'], ['zoom'],
-            0, 1, 5, 1, 7, 0
-          ]
+  // ═════════════════════════════════════════════════════════════════════
+  // MAP INITIALIZATION
+  // ═════════════════════════════════════════════════════════════════════
+  async function initMap() {
+    try {
+      // Fetch and modify style
+      const styleResponse = await fetch(CONFIG.STYLE_URL);
+      const style = await styleResponse.json();
+
+      // Inject vertical-perspective projection and sky atmosphere
+      style.projection = {
+        type: 'vertical-perspective',
+        pitch: 45,
+        bearing: 0
+      };
+
+      if (!style.sky) {
+        style.sky = {
+          'sky-type': 'atmosphere',
+          'sky-atmosphere-sun': [0, 0],
+          'sky-atmosphere-sun-intensity': 0.15
+        };
+      }
+
+      // Create map with modified style
+      STATE.map = new maplibregl.Map({
+        container: 'map',
+        style: style,
+        center: [0, 20],
+        zoom: 2.5,
+        pitch: 45,
+        bearing: 0,
+        antialias: true
+      });
+
+      // Multiple boot event fallbacks
+      const bootPromise = new Promise((resolve) => {
+        const onReady = () => {
+          STATE.mapReady = true;
+          cleanup();
+          resolve();
         };
 
-        map = new maplibregl.Map({
-          container: 'map',
-          style: baseStyle,
-          center: [20, 20],
-          zoom: 1.5,
-          pitch: 30,
-          bearing: 0,
-          renderWorldCopies: false,
-          antialias: true
-        });
+        const cleanup = () => {
+          STATE.map.off('idle', onReady);
+          STATE.map.off('load', onReady);
+          STATE.map.off('render', onReady);
+        };
 
-        // Add map interaction listeners
-        map.on('movestart', resetAutoRotate);
-        map.on('dragstart', resetAutoRotate);
-        map.on('zoomstart', resetAutoRotate);
-        map.on('touchstart', resetAutoRotate);
+        const timeout = setTimeout(() => {
+          STATE.mapReady = true;
+          cleanup();
+          resolve();
+        }, 6000);
 
-        // Update coordinates on mouse move
-        map.on('mousemove', (e) => {
-          const coords = e.lngLat;
-          document.getElementById('coords').textContent =
-            `${coords.lat.toFixed(2)}°, ${coords.lng.toFixed(2)}°`;
-        });
-
-        // Boot the app once map is ready
-        let booted = false;
-        function bootApp() {
-          if (booted) return;
-          booted = true;
-          fadeLoader();
-          setupControls();
-          setupEventListeners();
-          fetchVATSIMData();
-          startAutoRotate();
-          pollTimer = setInterval(fetchVATSIMData, CONFIG.pollInterval);
-          setTimeout(() => {
-            document.getElementById('welcomePopup').classList.add('show');
-          }, 1200);
-        }
-
-        // Try multiple events - whichever fires first wins
-        map.once('idle', bootApp);
-        map.once('load', bootApp);
-        map.on('render', function onRender() {
-          // Once we get a render frame, the map is visually ready
-          map.off('render', onRender);
-          setTimeout(bootApp, 500); // small delay after first render
-        });
-        // Ultimate fallback timeout
-        setTimeout(bootApp, 6000);
-      })
-      .catch(err => {
-        console.error('Failed to load map style:', err);
-        // Fallback: use style URL directly with timeout boot
-        map = new maplibregl.Map({
-          container: 'map',
-          style: CONFIG.mapStyle,
-          center: [20, 20],
-          zoom: 1.5,
-          pitch: 30,
-          antialias: true
-        });
-        let booted2 = false;
-        function bootFallback() {
-          if (booted2) return;
-          booted2 = true;
-          map.setProjection({type: 'vertical-perspective'});
-          fadeLoader();
-          setupControls();
-          setupEventListeners();
-          fetchVATSIMData();
-          startAutoRotate();
-          pollTimer = setInterval(fetchVATSIMData, CONFIG.pollInterval);
-        }
-        map.once('idle', bootFallback);
-        map.once('load', bootFallback);
-        setTimeout(bootFallback, 6000);
+        STATE.map.once('idle', onReady);
+        STATE.map.once('load', onReady);
+        STATE.map.once('render', onReady);
       });
+
+      await bootPromise;
+
+      // Initialize sources and layers
+      initSources();
+      initLayers();
+      initControls();
+
+      // Start data polling
+      fetchVATSIMData();
+      setInterval(fetchVATSIMData, CONFIG.POLL_INTERVAL);
+
+      // Hide loader
+      setTimeout(() => {
+        const loader = document.getElementById('loader');
+        loader.classList.add('fade');
+      }, 500);
+
+    } catch (error) {
+      console.error('Map initialization error:', error);
+    }
   }
 
-  // --- VATSIM DATA FETCHING ---
+  // ═════════════════════════════════════════════════════════════════════
+  // DATA SOURCES
+  // ═════════════════════════════════════════════════════════════════════
+  function initSources() {
+    if (!STATE.map || !STATE.mapReady) return;
+
+    // Altitude-based pilot sources
+    const altBands = [
+      { id: 'pilots-ground', min: 0, max: 1000 },
+      { id: 'pilots-low', min: 1000, max: 10000 },
+      { id: 'pilots-mid', min: 10000, max: 25000 },
+      { id: 'pilots-high', min: 25000, max: 35000 },
+      { id: 'pilots-upper', min: 35000, max: Infinity }
+    ];
+
+    altBands.forEach(band => {
+      if (!STATE.map.getSource(band.id)) {
+        STATE.map.addSource(band.id, {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: [] }
+        });
+      }
+    });
+
+    // Controllers source
+    if (!STATE.map.getSource('controllers')) {
+      STATE.map.addSource('controllers', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
+      });
+    }
+
+    // Routes source
+    if (!STATE.map.getSource('routes')) {
+      STATE.map.addSource('routes', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
+      });
+    }
+
+    // Weather source
+    if (!STATE.map.getSource('weather')) {
+      STATE.map.addSource('weather', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
+      });
+    }
+  }
+
+  // ═════════════════════════════════════════════════════════════════════
+  // LAYER INITIALIZATION
+  // ═════════════════════════════════════════════════════════════════════
+  function initLayers() {
+    if (!STATE.map || !STATE.mapReady) return;
+
+    // Remove existing layers
+    const layerIds = [
+      'pilots-ground-layer', 'pilots-low-layer', 'pilots-mid-layer',
+      'pilots-high-layer', 'pilots-upper-layer',
+      'controllers-layer', 'routes-layer', 'weather-layer'
+    ];
+
+    layerIds.forEach(id => {
+      if (STATE.map.getLayer(id)) STATE.map.removeLayer(id);
+    });
+
+    // Ground (0-1k ft)
+    STATE.map.addLayer({
+      id: 'pilots-ground-layer',
+      type: 'circle',
+      source: 'pilots-ground',
+      paint: {
+        'circle-radius': 3,
+        'circle-color': '#d1d5db',
+        'circle-opacity': 0.7,
+        'circle-blur': 0.4
+      }
+    });
+
+    // Low (1-10k ft)
+    STATE.map.addLayer({
+      id: 'pilots-low-layer',
+      type: 'circle',
+      source: 'pilots-low',
+      paint: {
+        'circle-radius': 5,
+        'circle-color': '#06b6d4',
+        'circle-opacity': 0.75,
+        'circle-blur': 0.6
+      }
+    });
+
+    // Mid (10-25k ft)
+    STATE.map.addLayer({
+      id: 'pilots-mid-layer',
+      type: 'circle',
+      source: 'pilots-mid',
+      paint: {
+        'circle-radius': 7,
+        'circle-color': '#3b82f6',
+        'circle-opacity': 0.8,
+        'circle-blur': 0.8
+      }
+    });
+
+    // High (25-35k ft)
+    STATE.map.addLayer({
+      id: 'pilots-high-layer',
+      type: 'circle',
+      source: 'pilots-high',
+      paint: {
+        'circle-radius': 8,
+        'circle-color': '#22d3ee',
+        'circle-opacity': 0.85,
+        'circle-blur': 1,
+        'circle-stroke-width': 1.5,
+        'circle-stroke-color': 'rgba(34, 211, 238, 0.5)'
+      }
+    });
+
+    // Upper (35k+ ft)
+    STATE.map.addLayer({
+      id: 'pilots-upper-layer',
+      type: 'circle',
+      source: 'pilots-upper',
+      paint: {
+        'circle-radius': 10,
+        'circle-color': '#fbbf24',
+        'circle-opacity': 0.9,
+        'circle-blur': 1.5,
+        'circle-stroke-width': 2,
+        'circle-stroke-color': 'rgba(251, 191, 36, 0.6)'
+      }
+    });
+
+    // Controllers layer
+    STATE.map.addLayer({
+      id: 'controllers-layer',
+      type: 'circle',
+      source: 'controllers',
+      paint: {
+        'circle-radius': 6,
+        'circle-color': '#34d399',
+        'circle-opacity': 0.8,
+        'circle-stroke-width': 2,
+        'circle-stroke-color': 'rgba(52, 211, 153, 0.4)',
+        'circle-blur': 0.4
+      }
+    });
+
+    // Routes layer
+    STATE.map.addLayer({
+      id: 'routes-layer',
+      type: 'line',
+      source: 'routes',
+      paint: {
+        'line-color': 'rgba(34, 211, 238, 0.3)',
+        'line-width': 1,
+        'line-dasharray': [2, 2]
+      }
+    });
+
+    // Weather layer
+    STATE.map.addLayer({
+      id: 'weather-layer',
+      type: 'circle',
+      source: 'weather',
+      paint: {
+        'circle-radius': 8,
+        'circle-color': '#f87171',
+        'circle-opacity': 0.6,
+        'circle-blur': 1
+      }
+    });
+
+    // Click handlers
+    ['pilots-ground-layer', 'pilots-low-layer', 'pilots-mid-layer', 'pilots-high-layer', 'pilots-upper-layer'].forEach(id => {
+      STATE.map.on('click', id, (e) => {
+        if (e.features.length > 0) selectPilot(e.features[0]);
+      });
+      STATE.map.on('mouseenter', id, () => { STATE.map.getCanvas().style.cursor = 'pointer'; });
+      STATE.map.on('mouseleave', id, () => { STATE.map.getCanvas().style.cursor = ''; });
+    });
+
+    STATE.map.on('click', 'controllers-layer', (e) => {
+      if (e.features.length > 0) {
+        const ctrl = e.features[0].properties;
+        showDrawer(`${ctrl.callsign}`, `Frequency: ${ctrl.frequency}<br>Type: ATC`);
+      }
+    });
+
+    STATE.map.on('mouseenter', 'controllers-layer', () => { STATE.map.getCanvas().style.cursor = 'pointer'; });
+    STATE.map.on('mouseleave', 'controllers-layer', () => { STATE.map.getCanvas().style.cursor = ''; });
+  }
+
+  // ═════════════════════════════════════════════════════════════════════
+  // VATSIM DATA FETCHING
+  // ═════════════════════════════════════════════════════════════════════
   async function fetchVATSIMData() {
     try {
-      const url = CONFIG.corsProxy + encodeURIComponent(CONFIG.vatsimUrl);
+      const url = CONFIG.CORS_PROXY + encodeURIComponent(CONFIG.VATSIM_URL);
       const response = await fetch(url);
       const data = await response.json();
 
-      pilots = data.pilots || [];
-      controllers = data.controllers || [];
+      STATE.pilots = data.pilots || [];
+      STATE.controllers = data.controllers || [];
+      STATE.lastUpdate = new Date();
 
-      updateStats();
+      // Update UI
+      document.getElementById('nPilots').textContent = STATE.pilots.length;
+      document.getElementById('nATC').textContent = STATE.controllers.length;
+      document.getElementById('updateTime').textContent = STATE.lastUpdate.toLocaleTimeString();
+
+      // Render data
       renderPilots();
       renderControllers();
-      updateSidebar();
+      updateTrafficList();
+      updateStats();
 
-      document.querySelector('.upd').classList.remove('stale');
-      document.querySelector('.upd').classList.add('ok');
     } catch (error) {
-      console.error('VATSIM fetch failed:', error);
+      console.error('VATSIM fetch error:', error);
+      document.getElementById('updateStatus').textContent = '◯';
       document.querySelector('.upd').classList.remove('ok');
       document.querySelector('.upd').classList.add('stale');
     }
   }
 
-  // --- STATS UPDATE ---
-  function updateStats() {
-    document.getElementById('nPilots').textContent = pilots.length;
-    document.getElementById('nATC').textContent = controllers.length;
-  }
-
-  // --- RENDER PILOTS ---
+  // ═════════════════════════════════════════════════════════════════════
+  // RENDER PILOTS BY ALTITUDE
+  // ═════════════════════════════════════════════════════════════════════
   function renderPilots() {
-    // Remove existing markers (simple approach)
-    if (map.querySourceFeatures) {
-      // Clear pilot layer
-    }
+    if (!STATE.map || !STATE.mapReady) return;
 
-    // Add aircraft to map via GeoJSON source
-    const features = pilots.map(pilot => ({
-      type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: [pilot.longitude, pilot.latitude]
-      },
-      properties: {
-        callsign: pilot.callsign,
-        altitude: pilot.altitude,
-        heading: pilot.heading,
-        groundspeed: pilot.groundspeed,
-        aircraft: pilot.flight_plan?.aircraft_short || 'Unknown'
-      }
-    }));
+    const altBands = {
+      'pilots-ground': { min: 0, max: 1000 },
+      'pilots-low': { min: 1000, max: 10000 },
+      'pilots-mid': { min: 10000, max: 25000 },
+      'pilots-high': { min: 25000, max: 35000 },
+      'pilots-upper': { min: 35000, max: Infinity }
+    };
 
-    // Create source if it doesn't exist
-    if (!map.getSource('pilots')) {
-      map.addSource('pilots', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: features }
-      });
+    // Clear all sources
+    Object.keys(altBands).forEach(sourceId => {
+      const source = STATE.map.getSource(sourceId);
+      if (source) source.setData({ type: 'FeatureCollection', features: [] });
+    });
 
-      // Add layer
-      map.addLayer({
-        id: 'pilots-layer',
-        type: 'circle',
-        source: 'pilots',
-        paint: {
-          'circle-radius': 6,
-          'circle-color': '#22d3ee',
-          'circle-opacity': 0.8,
-          'circle-stroke-width': 1,
-          'circle-stroke-color': '#ffffff'
+    // Sort pilots into altitude bands
+    const bandedPilots = {};
+    Object.keys(altBands).forEach(key => bandedPilots[key] = []);
+
+    STATE.pilots.forEach(pilot => {
+      const alt = pilot.altitude || 0;
+      for (const [bandId, band] of Object.entries(altBands)) {
+        if (alt >= band.min && alt < band.max) {
+          bandedPilots[bandId].push(pilot);
+          break;
         }
-      });
+      }
+    });
 
-      map.on('click', 'pilots-layer', (e) => {
-        const callsign = e.features[0].properties.callsign;
-        const pilot = pilots.find(p => p.callsign === callsign);
-        if (pilot) openPilotDrawer(pilot);
-      });
+    // Update sources with banded pilots
+    Object.entries(bandedPilots).forEach(([bandId, pilots]) => {
+      const features = pilots.map(pilot => ({
+        type: 'Feature',
+        properties: {
+          callsign: pilot.callsign,
+          altitude: pilot.altitude,
+          groundspeed: pilot.groundspeed,
+          heading: pilot.heading,
+          latitude: pilot.latitude,
+          longitude: pilot.longitude,
+          departure: pilot.flight_plan?.departure || 'N/A',
+          arrival: pilot.flight_plan?.arrival || 'N/A',
+          aircraft: pilot.flight_plan?.aircraft_short || 'N/A',
+          remarks: pilot.flight_plan?.remarks || ''
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: [pilot.longitude, pilot.latitude]
+        }
+      }));
 
-      map.on('mouseenter', 'pilots-layer', () => {
-        map.getCanvas().style.cursor = 'pointer';
-      });
-      map.on('mouseleave', 'pilots-layer', () => {
-        map.getCanvas().style.cursor = '';
-      });
-    } else {
-      // Update existing source
-      map.getSource('pilots').setData({ type: 'FeatureCollection', features: features });
-    }
+      const source = STATE.map.getSource(bandId);
+      if (source) source.setData({ type: 'FeatureCollection', features });
+    });
   }
 
-  // --- RENDER ATC ---
+  // ═════════════════════════════════════════════════════════════════════
+  // RENDER CONTROLLERS
+  // ═════════════════════════════════════════════════════════════════════
   function renderControllers() {
-    // Similar to pilots
-    const features = controllers.map(ctrl => ({
+    if (!STATE.map || !STATE.mapReady) return;
+
+    const features = STATE.controllers.map(ctrl => ({
       type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: [ctrl.longitude || 0, ctrl.latitude || 0]
-      },
       properties: {
         callsign: ctrl.callsign,
-        frequency: ctrl.frequency
+        frequency: ctrl.frequency,
+        atis_code: ctrl.atis_code || 'N/A'
+      },
+      geometry: {
+        type: 'Point',
+        coordinates: [ctrl.longitude, ctrl.latitude]
       }
     }));
 
-    if (!map.getSource('atc')) {
-      map.addSource('atc', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: features }
-      });
-
-      map.addLayer({
-        id: 'atc-layer',
-        type: 'circle',
-        source: 'atc',
-        paint: {
-          'circle-radius': 8,
-          'circle-color': '#34d399',
-          'circle-opacity': 0.6,
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#34d399'
-        }
-      });
-    } else {
-      map.getSource('atc').setData({ type: 'FeatureCollection', features: features });
-    }
+    const source = STATE.map.getSource('controllers');
+    if (source) source.setData({ type: 'FeatureCollection', features });
   }
 
-  // --- PILOT DRAWER ---
-  function openPilotDrawer(pilot) {
-    selectedPilot = pilot;
-    const fp = pilot.flight_plan || {};
-
-    const drawerTitle = document.getElementById('drawerTitle');
-    const drawerContent = document.getElementById('drawerContent');
-
-    drawerTitle.textContent = pilot.callsign;
-
-    const routeHtml = `
-      <div><strong>Route:</strong> ${fp.departure || '----'} → ${fp.arrival || '----'}</div>
-      <div><strong>Aircraft:</strong> ${fp.aircraft_short || 'Unknown'}</div>
-      <div><strong>Altitude:</strong> ${pilot.altitude?.toLocaleString() || '—'} ft</div>
-    `;
-
-    const liveHtml = `
-      <div><strong>Altitude:</strong> ${pilot.altitude?.toLocaleString() || '—'} ft</div>
-      <div><strong>Speed:</strong> ${pilot.groundspeed || 0} kt</div>
-      <div><strong>Heading:</strong> ${pilot.heading || 0}°</div>
-      <div><strong>Server:</strong> ${pilot.server || 'Unknown'}</div>
-    `;
-
-    const remarksHtml = `
-      <div><strong>Route:</strong> ${fp.route || 'Not filed'}</div>
-      <div><strong>Remarks:</strong> ${fp.remarks || 'None'}</div>
-    `;
-
-    drawerContent.innerHTML = routeHtml;
-
-    // Setup tabs
-    document.querySelectorAll('.drawer-tab').forEach(tab => {
-      tab.classList.remove('active');
-      tab.addEventListener('click', function() {
-        document.querySelectorAll('.drawer-tab').forEach(t => t.classList.remove('active'));
-        this.classList.add('active');
-
-        if (this.dataset.tab === 'route') drawerContent.innerHTML = routeHtml;
-        else if (this.dataset.tab === 'live') drawerContent.innerHTML = liveHtml;
-        else if (this.dataset.tab === 'remarks') drawerContent.innerHTML = remarksHtml;
-      });
-    });
-    document.querySelector('.drawer-tab').classList.add('active');
-
-    document.getElementById('infoDrawer').classList.add('open');
-  }
-
-  function closeDrawer() {
-    document.getElementById('infoDrawer').classList.remove('open');
-    selectedPilot = null;
-  }
-
-  // --- SIDEBAR / TRAFFIC LIST ---
-  function updateSidebar() {
-    const list = document.getElementById('trafficList');
-    const items = [
-      ...pilots.slice(0, 10).map(p => ({
-        type: 'pilot',
-        callsign: p.callsign,
-        altitude: p.altitude,
-        speed: p.groundspeed,
-        route: `${p.flight_plan?.departure || '—'}-${p.flight_plan?.arrival || '—'}`
-      })),
-      ...controllers.slice(0, 5).map(c => ({
-        type: 'atc',
-        callsign: c.callsign,
-        frequency: c.frequency
-      }))
+  // ═════════════════════════════════════════════════════════════════════
+  // TRAFFIC LIST
+  // ═════════════════════════════════════════════════════════════════════
+  function updateTrafficList() {
+    const container = document.getElementById('trafficList');
+    const allTraffic = [
+      ...STATE.pilots.map(p => ({ type: 'pilot', data: p })),
+      ...STATE.controllers.map(c => ({ type: 'controller', data: c }))
     ];
 
-    list.innerHTML = items.map(item => {
-      if (item.type === 'pilot') {
+    allTraffic.sort((a, b) => {
+      const callA = (a.data.callsign || '').toLowerCase();
+      const callB = (b.data.callsign || '').toLowerCase();
+      return callA.localeCompare(callB);
+    });
+
+    if (allTraffic.length === 0) {
+      container.innerHTML = '<div style="text-align:center;color:var(--t3);padding:20px">No traffic</div>';
+      return;
+    }
+
+    container.innerHTML = allTraffic.map(item => {
+      const { type, data } = item;
+      if (type === 'pilot') {
         return `
-          <div class="traffic-item" onclick="findPilot('${item.callsign}')">
-            <span class="traffic-call">${item.callsign}</span>
-            <div class="traffic-info">${item.altitude.toLocaleString()} ft | ${item.speed} kt</div>
-            <div class="traffic-info">${item.route}</div>
+          <div class="traffic-item" onclick="selectPilotByCallsign('${data.callsign}')">
+            <span class="traffic-call">${data.callsign}</span>
+            <div class="traffic-info">${data.flight_plan?.departure || 'N/A'} → ${data.flight_plan?.arrival || 'N/A'}</div>
+            <div class="traffic-info">FL${Math.floor(data.altitude / 100)}</div>
           </div>
         `;
       } else {
         return `
-          <div class="traffic-item">
-            <span class="traffic-call">${item.callsign}</span>
-            <div class="traffic-info">${item.frequency}</div>
+          <div class="traffic-item" onclick="selectController('${data.callsign}')">
+            <span class="traffic-call">${data.callsign}</span>
+            <div class="traffic-info">${data.frequency}</div>
+            <div class="traffic-info">ATC Station</div>
           </div>
         `;
       }
     }).join('');
   }
 
-  function findPilot(callsign) {
-    const pilot = pilots.find(p => p.callsign === callsign);
+  // ═════════════════════════════════════════════════════════════════════
+  // PILOT SELECTION
+  // ═════════════════════════════════════════════════════════════════════
+  function selectPilot(feature) {
+    const props = feature.properties;
+    STATE.selectedPilot = props.callsign;
+
+    const infoHtml = `
+      <div><strong>Callsign:</strong> ${props.callsign}</div>
+      <div><strong>Aircraft:</strong> ${props.aircraft}</div>
+      <div><strong>Altitude:</strong> FL${Math.floor(props.altitude / 100)}</div>
+      <div><strong>Groundspeed:</strong> ${props.groundspeed} kts</div>
+      <div><strong>Heading:</strong> ${props.heading}°</div>
+    `;
+
+    const flightHtml = `
+      <div><strong>Departure:</strong> ${props.departure}</div>
+      <div><strong>Arrival:</strong> ${props.arrival}</div>
+      <div><strong>Route:</strong> ${props.remarks || 'N/A'}</div>
+      <div><strong>Position:</strong> ${props.latitude.toFixed(4)}, ${props.longitude.toFixed(4)}</div>
+    `;
+
+    showDrawer(props.callsign, infoHtml, flightHtml);
+    highlightTrafficItem(props.callsign);
+  }
+
+  function selectPilotByCallsign(callsign) {
+    const pilot = STATE.pilots.find(p => p.callsign === callsign);
     if (pilot) {
-      map.flyTo({
+      STATE.map.flyTo({
         center: [pilot.longitude, pilot.latitude],
-        zoom: 5,
+        zoom: 6,
         duration: 1000
       });
-      openPilotDrawer(pilot);
+      selectPilot({
+        properties: {
+          callsign: pilot.callsign,
+          altitude: pilot.altitude,
+          groundspeed: pilot.groundspeed,
+          heading: pilot.heading,
+          latitude: pilot.latitude,
+          longitude: pilot.longitude,
+          departure: pilot.flight_plan?.departure || 'N/A',
+          arrival: pilot.flight_plan?.arrival || 'N/A',
+          aircraft: pilot.flight_plan?.aircraft_short || 'N/A',
+          remarks: pilot.flight_plan?.remarks || ''
+        }
+      });
     }
   }
 
-  // --- AUTO ROTATE ---
-  function startAutoRotate() {
-    if (autoRotateTimer) return;
-    autoRotateTimer = setInterval(() => {
-      if (Date.now() - lastInteraction > CONFIG.autoRotateDelay) {
-        const bearing = (map.getBearing() + 0.5) % 360;
-        map.setBearing(bearing);
-      }
-    }, 100);
+  function selectController(callsign) {
+    const ctrl = STATE.controllers.find(c => c.callsign === callsign);
+    if (ctrl) {
+      STATE.map.flyTo({
+        center: [ctrl.longitude, ctrl.latitude],
+        zoom: 5,
+        duration: 1000
+      });
+    }
   }
 
-  function resetAutoRotate() {
-    lastInteraction = Date.now();
+  // ═════════════════════════════════════════════════════════════════════
+  // UI FUNCTIONS
+  // ═════════════════════════════════════════════════════════════════════
+  function showDrawer(title, infoHtml, flightHtml = '') {
+    document.getElementById('drawerTitle').textContent = title;
+    document.getElementById('tabInfo').innerHTML = infoHtml;
+    document.getElementById('tabFlight').innerHTML = flightHtml;
+    document.getElementById('infoDrawer').classList.add('open');
   }
 
-  // --- CONTROLS SETUP ---
-  function setupControls() {
-    document.getElementById('zoomIn').addEventListener('click', () => map.zoomIn());
-    document.getElementById('zoomOut').addEventListener('click', () => map.zoomOut());
-    document.getElementById('resetView').addEventListener('click', () => {
-      map.flyTo({ center: [0, 20], zoom: 2, bearing: 0, pitch: 45, duration: 1000 });
-    });
+  function highlightTrafficItem(callsign) {
+    document.querySelectorAll('.traffic-item').forEach(el => el.classList.remove('active'));
+    const item = Array.from(document.querySelectorAll('.traffic-item')).find(el =>
+      el.textContent.includes(callsign)
+    );
+    if (item) item.classList.add('active');
+  }
 
+  function updateStats() {
+    // Updates handled in fetchVATSIMData
+  }
+
+  // ═════════════════════════════════════════════════════════════════════
+  // INITIALIZATION & CONTROLS
+  // ═════════════════════════════════════════════════════════════════════
+  function initControls() {
     // Layer toggles
-    document.querySelectorAll('.layer-toggle').forEach(btn => {
-      btn.addEventListener('click', function() {
-        this.classList.toggle('active');
-        const layer = this.dataset.layer;
-        const visibility = this.classList.contains('active') ? 'visible' : 'none';
-
-        if (layer === 'aircraft' && map.getLayer('pilots-layer')) {
-          map.setLayoutProperty('pilots-layer', 'visibility', visibility);
-        } else if (layer === 'atc' && map.getLayer('atc-layer')) {
-          map.setLayoutProperty('atc-layer', 'visibility', visibility);
+    document.getElementById('toggleAircraft').addEventListener('click', function() {
+      STATE.layerVisibility.aircraft = !STATE.layerVisibility.aircraft;
+      this.classList.toggle('active');
+      ['pilots-ground-layer', 'pilots-low-layer', 'pilots-mid-layer', 'pilots-high-layer', 'pilots-upper-layer'].forEach(id => {
+        if (STATE.map.getLayer(id)) {
+          STATE.map.setLayoutProperty(id, 'visibility', STATE.layerVisibility.aircraft ? 'visible' : 'none');
         }
       });
     });
 
-    // Legend toggle
-    const legend = document.getElementById('legend');
-    const legendBtn = document.createElement('button');
-    legendBtn.style.cssText = 'position:absolute;bottom:50px;left:14px;z-index:1400;width:36px;height:36px;border-radius:10px;background:var(--bg3s);border:1px solid var(--bdr);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s ease;font-size:14px;backdrop-filter:blur(8px)';
-    legendBtn.textContent = '⚙';
-    legendBtn.title = 'Legend';
-    legendBtn.addEventListener('click', () => legend.classList.toggle('open'));
-    document.querySelector('.content').appendChild(legendBtn);
-  }
+    document.getElementById('toggleATC').addEventListener('click', function() {
+      STATE.layerVisibility.atc = !STATE.layerVisibility.atc;
+      this.classList.toggle('active');
+      if (STATE.map.getLayer('controllers-layer')) {
+        STATE.map.setLayoutProperty('controllers-layer', 'visibility', STATE.layerVisibility.atc ? 'visible' : 'none');
+      }
+    });
 
-  // --- EVENT LISTENERS ---
-  function setupEventListeners() {
+    document.getElementById('toggleRoutes').addEventListener('click', function() {
+      STATE.layerVisibility.routes = !STATE.layerVisibility.routes;
+      this.classList.toggle('active');
+      if (STATE.map.getLayer('routes-layer')) {
+        STATE.map.setLayoutProperty('routes-layer', 'visibility', STATE.layerVisibility.routes ? 'visible' : 'none');
+      }
+    });
+
+    document.getElementById('toggleWeather').addEventListener('click', function() {
+      STATE.layerVisibility.weather = !STATE.layerVisibility.weather;
+      this.classList.toggle('active');
+      if (STATE.map.getLayer('weather-layer')) {
+        STATE.map.setLayoutProperty('weather-layer', 'visibility', STATE.layerVisibility.weather ? 'visible' : 'none');
+      }
+    });
+
+    document.getElementById('toggleAltitude').addEventListener('click', function() {
+      document.getElementById('altitudePanel').classList.toggle('open');
+    });
+
+    // Altitude band checkboxes
+    document.querySelectorAll('.alt-band-checkbox').forEach(cb => {
+      cb.addEventListener('click', function() {
+        const band = this.getAttribute('data-alt');
+        STATE.altitudeBands[band] = !STATE.altitudeBands[band];
+        this.classList.toggle('checked');
+      });
+    });
+
+    // Panel toggles
     document.getElementById('togglePanel').addEventListener('click', () => {
       document.getElementById('sidePanel').classList.toggle('open');
     });
@@ -953,33 +1195,79 @@
       document.getElementById('sidePanel').classList.remove('open');
     });
 
-    document.getElementById('closeDrawer').addEventListener('click', closeDrawer);
-
-    document.getElementById('closeWelcome').addEventListener('click', () => {
-      document.getElementById('welcomePopup').classList.remove('show');
+    document.getElementById('closeDrawer').addEventListener('click', () => {
+      document.getElementById('infoDrawer').classList.remove('open');
     });
 
-    // Search functionality
-    document.getElementById('searchInput').addEventListener('input', (e) => {
-      const query = e.target.value.toLowerCase();
-      // Filter sidebar
-      const items = document.querySelectorAll('.traffic-item');
-      items.forEach(item => {
-        const text = item.textContent.toLowerCase();
-        item.style.display = text.includes(query) ? 'block' : 'none';
+    // Drawer tabs
+    document.querySelectorAll('.drawer-tab').forEach(tab => {
+      tab.addEventListener('click', function() {
+        const tabName = this.getAttribute('data-tab');
+        document.querySelectorAll('.drawer-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+        this.classList.add('active');
+        document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).style.display = 'block';
       });
     });
+
+    // Search
+    document.getElementById('searchInput').addEventListener('input', function() {
+      const query = this.value.toLowerCase();
+      if (!query) return;
+
+      const pilot = STATE.pilots.find(p => p.callsign.toLowerCase().includes(query));
+      if (pilot) {
+        selectPilotByCallsign(pilot.callsign);
+      }
+    });
+
+    // Map events
+    STATE.map.on('mousemove', (e) => {
+      const { lat, lng } = e.lngLat;
+      document.getElementById('coordDisplay').textContent = `${lat.toFixed(2)}°, ${lng.toFixed(2)}°`;
+    });
+
+    // Reset zoom
+    const resetBtn = document.createElement('button');
+    resetBtn.className = 'map-control-btn';
+    resetBtn.title = 'Reset view';
+    resetBtn.innerHTML = '⊙';
+    resetBtn.addEventListener('click', () => {
+      STATE.map.flyTo({ center: [0, 20], zoom: 2.5, pitch: 45, duration: 1000 });
+    });
+
+    // Zoom controls
+    const zoomInBtn = document.createElement('button');
+    zoomInBtn.className = 'map-control-btn';
+    zoomInBtn.title = 'Zoom in';
+    zoomInBtn.innerHTML = '+';
+    zoomInBtn.addEventListener('click', () => STATE.map.zoomIn());
+
+    const zoomOutBtn = document.createElement('button');
+    zoomOutBtn.className = 'map-control-btn';
+    zoomOutBtn.title = 'Zoom out';
+    zoomOutBtn.innerHTML = '−';
+    zoomOutBtn.addEventListener('click', () => STATE.map.zoomOut());
+
+    const legendBtn = document.createElement('button');
+    legendBtn.className = 'map-control-btn';
+    legendBtn.title = 'Toggle legend';
+    legendBtn.innerHTML = '≡';
+    legendBtn.addEventListener('click', () => {
+      document.getElementById('legend').classList.toggle('open');
+    });
+
+    const controlsDiv = document.querySelector('.map-controls');
+    controlsDiv.insertBefore(zoomInBtn, controlsDiv.firstChild);
+    controlsDiv.appendChild(zoomOutBtn);
+    controlsDiv.appendChild(resetBtn);
+    controlsDiv.appendChild(legendBtn);
   }
 
-  // --- LOADING SCREEN ---
-  function fadeLoader() {
-    setTimeout(() => {
-      document.getElementById('loader').classList.add('fade');
-    }, 800);
-  }
-
-  // Initialize on document ready
-  document.addEventListener('DOMContentLoaded', initMap);
+  // ═════════════════════════════════════════════════════════════════════
+  // START APP
+  // ═════════════════════════════════════════════════════════════════════
+  window.addEventListener('DOMContentLoaded', initMap);
 </script>
 
 </body>
