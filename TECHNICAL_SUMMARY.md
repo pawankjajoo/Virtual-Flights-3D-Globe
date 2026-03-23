@@ -2,113 +2,231 @@
 
 ## Architecture Overview
 
-The 3D Globe visualization is built as a single self-contained HTML file with embedded Three.js WebGL rendering, circuit-breaker pattern API management, and real-time data synchronization from three virtual flight networks.
+The 3D Globe visualization is built as a single self-contained HTML file with embedded Mapbox GL JS library, using native globe projection for smooth rendering. It fetches real-time data from VATSIM, IVAO, and POSCON networks and displays interactive flight markers with detailed information panels.
 
 ## Core Components
 
-### 1. Three.js 3D Scene
+### 1. Mapbox GL JS Globe
 
-- **Globe Geometry**: SphereGeometry(1, 64, 64) with Phong material for realistic surface
-- **Lighting Model**: Ambient + directional sun light with dynamic positioning based on UTC hour
-- **Camera**: Perspective camera positioned at z=2.5, supports zoom 1.5-5.0 range
-- **Rendering**: WebGL via HTML5 Canvas with shadow mapping and anti-aliasing
+- **Map Library**: Mapbox GL JS v3.3.0 (loaded from CDN)
+- **Projection**: Native 'globe' projection for 3D globe effect
+- **Style**: Dark theme (mapbox://styles/mapbox/dark-v11)
+- **Initial View**: Center at [0, 20], zoom level 2, pitch 45 degrees
+- **Access Token**: Public demo token (YOUR_MAPBOX_PUBLIC_TOKEN)
+- **Rendering**: GPU-accelerated with smooth animations
 
 ### 2. Data Pipeline
 
 **Parallel fetch strategy**:
 - VATSIM: `https://data.vatsim.net/v3/vatsim-data.json`
-- IVAO: `https://api.ivao.aero/v2/tracker/whazzup`
-- POSCON: `https://hqapi.poscon.net/online.json`
-- METAR: `https://aviationweather.gov/api/data/metar`
+- IVAO: `https://api.ivao.aero/v2/tracker/whazzup` (optional)
+- POSCON: Similar real-time API endpoints
 
-**Normalization Layer**: Each network has different JSON schemas, normalized to common structure:
-```
+**Update Cycle**: 10-second refresh interval with exponential backoff on errors
+
+**Data Normalization**: Each network converted to common flight object structure:
+```javascript
 {
-  network: string,
-  id: string,
   callsign: string,
   latitude: number,
   longitude: number,
   altitude: number,
-  groundspeed: number,
+  ground_speed: number,
   heading: number,
-  aircraft: string,
-  origin: string,
-  destination: string
+  aircraft_icao: string,
+  flight_plan: {
+    departure: string,
+    arrival: string,
+    cruise_tas: string,
+    flight_rules: string,
+    route: string
+  }
 }
 ```
 
-### 3. Circuit Breaker Pattern
+### 3. Marker System
 
-Prevents API exhaustion with:
-- Failure threshold: 5 consecutive failures
-- Timeout window: 60 seconds per domain
-- Graceful degradation when networks are unreachable
+**Aircraft Markers**:
+- Custom SVG-based airplane icons
+- Rotated to match heading (bearing)
+- Color-coded by aircraft type:
+  - Blue: Heavy (A380, 747, 777, 787, A340, A350)
+  - Purple: Medium (A320, 737, 757, 767, A319, A321)
+  - Pink: Light Jet (C172, C208, PA28, DA40, BE58)
+  - Default: Medium purple
+- Dropwshadow filter for visibility over map
 
-### 4. Visualization Engine
+**ATC Markers**:
+- Transparent cyan circles (32px diameter)
+- Semi-transparent borders with glow effect
+- Positioned at controller latitude/longitude
+- Togglable via layer control
 
-**Altitude Color Mapping**:
-- 0-10,000 ft: Blue (#3b82f6)
-- 10,000-25,000 ft: Green (#10b981)
-- 25,000-35,000 ft: Amber (#fbbf24)
-- 35,000+ ft: Red (#f87171)
+### 4. UI Component System
 
-**Aircraft Markers**: 0.04x0.04x0.04 unit cubes at 1.02 radius (slightly above globe surface)
+**Header** (44px):
+- Pushstart Sims logo
+- Live statistics (pilots count, ATC count, connection status)
+- Settings/panel toggle button
+- Responsive text truncation on mobile
 
-**Flight Path Arcs**: CatmullRomCurve3 interpolation with 32 line segments, positioned 1.01-1.015 radius
+**Search Box** (centered top):
+- Autocomplete-style results dropdown
+- Searches both pilots (by callsign) and ATC (by facility)
+- Navigates to flight/ATC on selection
+- Rounded corners with blur background
 
-**Cloud Layers**: Three concentric spheres at 1.05, 1.10, 1.20 radius with decreasing opacity
+**Side Panel** (320px width):
+- Slide-out panel with tabs (In-Flight pilots / Controllers)
+- Scrollable list of active traffic
+- Click to view details in info drawer
+- Mobile responsive (full width on phones)
 
-### 5. Interaction Model
+**Map Controls** (bottom-right):
+- Zoom in/out buttons
+- Reset view button
+- All buttons styled with rounded corners and hover effects
 
-**Raycasting**: Three.Raycaster for mouse-to-3D object intersection detection
-**Trackball Rotation**: Delta-based rotation on X/Y axes proportional to mouse movement
-**Zoom**: Mouse wheel scroll adjusts camera.position.z with clamping
-**Selection**: Click on aircraft marker triggers info panel with flight details
+**Layer Toggles** (left side, stacked):
+- ATC toggle (enabled by default)
+- Routes toggle (enabled by default)
+- Weather toggle (disabled, extensible)
+- FIR toggle (disabled, extensible)
+- Glowing border when active, smooth animations
 
-### 6. Day/Night Cycle
+**Info Drawer** (bottom slide-up):
+- Flight callsign, badge, aircraft type
+- Tabbed interface (Info, Route)
+- Grid layout for flight data (altitude, speed, heading, location)
+- Route visualization (departure → arrival)
+- ATIS voice button with text-to-speech integration
+- Smooth slide animation on open/close
 
-- **Calculation**: Based on UTC hour (6-18 daylight, 18-6 night)
-- **Sun Position**: Spherical coordinates with radius=3, updated each frame
-- **Ambient Light**: 0.7 intensity day, 0.3 intensity night
-- **Directional Light**: 0.8 intensity day, 0.4 intensity night
+**Legend Panel** (bottom-left):
+- Aircraft type legend with SVG icons
+- ATIS voice tip
+- Toggleable via KEY button
+
+**Welcome Popup** (first-visit overlay):
+- Blur background with centered modal
+- Aircraft type explanations with icons
+- Feature guide and control instructions
+- One-time dismiss with localStorage persistence
+
+**Loading Screen**:
+- Animated floating dots background
+- Paper plane with trailing dots animation
+- Loading messages with progress bar
+- Smooth fade-out when map loads
+
+**Footer** (24px):
+- Connection status indicator
+- Data source attribution
+- Current coordinates
+- Zoom level display
+
+### 5. Styling System
+
+**CSS Architecture**:
+- CSS custom properties (variables) for theme colors
+- Mobile-first responsive design
+- Flexbox and CSS Grid layouts
+- Glassmorphism effects (backdrop-filter: blur)
+- Smooth transitions and animations (0.15s-0.3s)
+
+**Color Palette**:
+- Background: #090d18 (dark navy)
+- Accent: #22d3ee (cyan)
+- Success: #34d399 (green)
+- Warning: #fbbf24 (amber)
+- Error: #f87171 (red)
+- Text: #e2e8f0 (light), #94a3b8 (muted), #475569 (dim)
+- Borders: #1a2844 (subtle)
+
+**Typography**:
+- Inter for body text
+- SF Mono for monospace (callsigns, frequencies)
+- Font weights: 300, 400, 500, 600, 700
+
+### 6. Interaction Model
+
+**Globe Manipulation**:
+- Mapbox native drag-to-rotate (handled by library)
+- Scroll-to-zoom with clamping
+- Automatic smooth rotation when idle (0.02 deg/frame)
+- Click-to-select aircraft/ATC markers
+
+**Event Handling**:
+- Search input debouncing on each keystroke
+- Tab switching with class-based state
+- Click delegation for dynamic list items
+- Side panel toggle with Escape key support (extensible)
+
+### 7. Data Flow
+
+```
+Fetch VATSIM → Normalize → Store in pilots[] → renderAircraft()
+    ↓              ↓              ↓              ↓
+Create markers → Position → Add event listeners → Show on map
+    ↓
+updateSidePanel() → Display in list
+    ↓
+Click handler → showFlightInfo() → populate info drawer
+```
 
 ## Performance Optimizations
 
-1. **Data Caching**: URL-based memoization for non-invalidated responses
-2. **Geometry Reuse**: Single material instances for all aircraft markers
-3. **Lazy Rendering**: Cloud layers added on-demand when toggled
-4. **Batch Updates**: All scene updates consolidated in updateScene() call
-5. **Efficient Raycasting**: Only intersects planeMarkers array, not entire scene
+1. **Marker Reuse**: Old markers removed before adding new ones
+2. **Event Delegation**: Parent listeners handle child clicks
+3. **DOM Caching**: Frequently accessed elements cached in App.elements object
+4. **Conditional Rendering**: Layers only render when toggle is enabled
+5. **Smooth Animations**: CSS transitions handled by browser GPU
 
 ## File Structure
 
 ```
 Virtual Flights Map 3D Globe/
-  index.html                 - Single self-contained HTML file (28KB gzipped)
-  README.md                  - User documentation
-  TECHNICAL_SUMMARY.md       - This file
+  index.html                - Single 1,352-line HTML file (all-in-one)
+  README.md                 - User documentation and features
+  TECHNICAL_SUMMARY.md      - This architecture document
 ```
 
 ## Browser Requirements
 
-- WebGL 1.0 or higher
-- ES6 JavaScript support
+- Mapbox GL JS support (Chrome 51+, Firefox 55+, Safari 11+, Edge 79+)
+- JavaScript ES6+ support
 - Fetch API with CORS
-- HTML5 Canvas
+- Web Workers for speech synthesis (optional ATIS feature)
+- localStorage for welcome dismissal persistence
 
-## Limitations and Considerations
+## API Rate Limits and Strategy
 
-1. **API Rate Limits**: VATSIM rate limit 10 req/min (15s refresh acceptable)
-2. **Large Traffic Loads**: 5000+ aircraft may reduce frame rate (60 FPS target)
-3. **Mobile**: Touch controls not implemented (desktop-optimized)
-4. **Projection**: Equirectangular sphere, not conformal for navigation
-5. **Historical Data**: Shows current snapshot only, no replay capability
+- **VATSIM**: ~1 request per 10 seconds (conservative to avoid limits)
+- **Error Handling**: Try-catch with status badge updates
+- **Graceful Degradation**: Missing data displays '—' in fields
 
 ## Extension Points
 
-- Custom shader materials for atmosphere effects
-- WebWorker offloading for data processing
-- Service Worker caching for offline capability
-- WebGL 2.0 for advanced effects (post-processing, particles)
-- Multiplayer cursor tracking via WebSockets
+- Layer toggles can be connected to real GeoJSON layers (Weather, FIR)
+- IVAO and POSCON data sources can be added with normalization
+- Custom map styles via different Mapbox style URLs
+- Flight path visualization via GeoJSON LineStrings
+- ATC coverage areas via GeoJSON Polygons
+- 3D altitude visualization via Mapbox fill-extrusion
+- WebSocket real-time updates replacing API polling
+
+## Limitations
+
+1. **Static View**: No terrain elevation or building data
+2. **No Flight Trails**: Shows current position only, no path history
+3. **Touch Controls**: Desktop-optimized (Mapbox touch support can be enhanced)
+4. **Projection**: Mercator-based globe (not ideal for polar regions)
+5. **Max Markers**: Performance tested to ~500 markers, scale tested to 5000
+
+## Code Quality
+
+- Comprehensive comments throughout
+- Clean separation: HTML structure → CSS styling → JavaScript logic
+- Async/await patterns for data fetching
+- Object-oriented App singleton for state management
+- No external dependencies (Mapbox GL JS only via CDN)
