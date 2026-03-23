@@ -624,19 +624,15 @@
       const style = await styleResponse.json();
 
       // Inject vertical-perspective projection and sky atmosphere
-      style.projection = {
-        type: 'vertical-perspective',
-        pitch: 45,
-        bearing: 0
-      };
+      style.projection = { type: 'vertical-perspective' };
 
-      if (!style.sky) {
-        style.sky = {
-          'sky-type': 'atmosphere',
-          'sky-atmosphere-sun': [0, 0],
-          'sky-atmosphere-sun-intensity': 0.15
-        };
-      }
+      // Atmosphere for globe view
+      style.sky = {
+        'atmosphere-blend': [
+          'interpolate', ['linear'], ['zoom'],
+          0, 1, 5, 1, 7, 0
+        ]
+      };
 
       // Create map with modified style
       STATE.map = new maplibregl.Map({
@@ -649,34 +645,24 @@
         antialias: true
       });
 
-      // Multiple boot event fallbacks
-      const bootPromise = new Promise((resolve) => {
-        const onReady = () => {
-          STATE.mapReady = true;
-          cleanup();
-          resolve();
-        };
+      // Wait for style to fully load before adding sources/layers
+      await new Promise((resolve) => {
+        let resolved = false;
+        const done = () => { if (!resolved) { resolved = true; resolve(); } };
 
-        const cleanup = () => {
-          STATE.map.off('idle', onReady);
-          STATE.map.off('load', onReady);
-          STATE.map.off('render', onReady);
-        };
-
-        const timeout = setTimeout(() => {
-          STATE.mapReady = true;
-          cleanup();
-          resolve();
-        }, 6000);
-
-        STATE.map.once('idle', onReady);
-        STATE.map.once('load', onReady);
-        STATE.map.once('render', onReady);
+        // style.load is the ONLY reliable event for source/layer creation
+        if (STATE.map.isStyleLoaded()) {
+          done();
+        } else {
+          STATE.map.once('style.load', done);
+          // Ultimate fallback
+          setTimeout(done, 8000);
+        }
       });
 
-      await bootPromise;
+      STATE.mapReady = true;
 
-      // Initialize sources and layers
+      // Initialize sources and layers (AFTER style is loaded)
       initSources();
       initLayers();
       initControls();
@@ -685,11 +671,14 @@
       fetchVATSIMData();
       setInterval(fetchVATSIMData, CONFIG.POLL_INTERVAL);
 
-      // Hide loader
-      setTimeout(() => {
-        const loader = document.getElementById('loader');
-        loader.classList.add('fade');
-      }, 500);
+      // Hide loader after first render
+      const hideLoader = () => {
+        setTimeout(() => {
+          document.getElementById('loader').classList.add('fade');
+        }, 500);
+      };
+      STATE.map.once('idle', hideLoader);
+      setTimeout(hideLoader, 4000); // fallback
 
     } catch (error) {
       console.error('Map initialization error:', error);
