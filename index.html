@@ -37,7 +37,7 @@
 
     #app{width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden}
 
-    /* ═════ HEADER ═════ */
+    /* HEADER */
     .header{
       flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
       padding:0 14px;background:var(--bg2);border-bottom:1px solid var(--bdr);
@@ -86,7 +86,7 @@
     }
     .settings-btn:hover{border-color:var(--acc);color:var(--t1)}
 
-    /* ═════ CONTENT ═════ */
+    /* CONTENT */
     .content{flex:1;position:relative;overflow:hidden;min-height:0}
 
     #map{width:100%;height:100%;background:var(--bg);background-image:radial-gradient(circle at 20% 50%, rgba(34, 211, 238, 0.03) 0%, transparent 50%)}
@@ -356,7 +356,7 @@
     }
     @keyframes barFill{0%{width:0}100%{width:100%}}
 
-    /* ═════ FOOTER ═════ */
+    /* FOOTER */
     .footer{
       flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
       padding:3px 12px;background:var(--bg2);border-top:1px solid var(--bdr);
@@ -382,7 +382,7 @@
 <body>
 
 <div id="app">
-  <!-- ═══ HEADER ═══ -->
+  <!-- HEADER -->
   <div class="header">
     <div class="header-left">
       <a href="https://www.pushstartsims.com" target="_blank" rel="noopener" style="display:flex;align-items:center">
@@ -424,7 +424,7 @@
     </div>
   </div>
 
-  <!-- ═══ CONTENT ═══ -->
+  <!-- CONTENT -->
   <div class="content">
     <div id="map"></div>
 
@@ -567,7 +567,7 @@
     </div>
   </div>
 
-  <!-- ═══ FOOTER ═══ -->
+  <!-- FOOTER -->
   <div class="footer">
     <div class="upd ok">
       <span id="updateStatus">●</span>
@@ -579,9 +579,9 @@
 </div>
 
 <script>
-  // ═════════════════════════════════════════════════════════════════════
+  //
   // CONFIGURATION
-  // ═════════════════════════════════════════════════════════════════════
+  //
   const CONFIG = {
     VATSIM_URL: 'https://data.vatsim.net/v3/vatsim-data.json',
     CORS_PROXY: 'https://corsproxy.io/?',
@@ -589,9 +589,9 @@
     STYLE_URL: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
   };
 
-  // ═════════════════════════════════════════════════════════════════════
+  //
   // STATE
-  // ═════════════════════════════════════════════════════════════════════
+  //
   const STATE = {
     map: null,
     mapReady: false,
@@ -614,9 +614,9 @@
     }
   };
 
-  // ═════════════════════════════════════════════════════════════════════
+  //
   // MAP INITIALIZATION
-  // ═════════════════════════════════════════════════════════════════════
+  //
   async function initMap() {
     try {
       // Create map with Carto style URL (MapLibre handles CORS for style loading)
@@ -699,9 +699,9 @@
     }
   }
 
-  // ═════════════════════════════════════════════════════════════════════
+  //
   // DATA SOURCES
-  // ═════════════════════════════════════════════════════════════════════
+  //
   function initSources() {
     if (!STATE.map || !STATE.mapReady) return;
 
@@ -748,9 +748,9 @@
     }
   }
 
-  // ═════════════════════════════════════════════════════════════════════
+  //
   // LAYER INITIALIZATION
-  // ═════════════════════════════════════════════════════════════════════
+  //
   function initLayers() {
     if (!STATE.map || !STATE.mapReady) return;
 
@@ -894,9 +894,9 @@
     STATE.map.on('mouseleave', 'controllers-layer', () => { STATE.map.getCanvas().style.cursor = ''; });
   }
 
-  // ═════════════════════════════════════════════════════════════════════
+  //
   // VATSIM DATA FETCHING
-  // ═════════════════════════════════════════════════════════════════════
+  //
   async function fetchVATSIMData() {
     try {
       const url = CONFIG.CORS_PROXY + encodeURIComponent(CONFIG.VATSIM_URL);
@@ -928,9 +928,9 @@
     }
   }
 
-  // ═════════════════════════════════════════════════════════════════════
+  //
   // RENDER PILOTS BY ALTITUDE
-  // ═════════════════════════════════════════════════════════════════════
+  //
   function renderPilots() {
     if (!STATE.map || !STATE.mapReady) return;
 
@@ -989,9 +989,9 @@
     });
   }
 
-  // ═════════════════════════════════════════════════════════════════════
+  //
   // RENDER CONTROLLERS
-  // ═════════════════════════════════════════════════════════════════════
+  //
   function renderControllers() {
     if (!STATE.map || !STATE.mapReady) return;
 
@@ -1012,9 +1012,9 @@
     if (source) source.setData({ type: 'FeatureCollection', features });
   }
 
-  // ═════════════════════════════════════════════════════════════════════
+  //
   // TRAFFIC LIST
-  // ═════════════════════════════════════════════════════════════════════
+  //
   function updateTrafficList() {
     const container = document.getElementById('trafficList');
     const allTraffic = [
@@ -1055,9 +1055,9 @@
     }).join('');
   }
 
-  // ═════════════════════════════════════════════════════════════════════
+  //
   // PILOT SELECTION
-  // ═════════════════════════════════════════════════════════════════════
+  //
   function selectPilot(feature) {
     const props = feature.properties;
     STATE.selectedPilot = props.callsign;
@@ -1117,9 +1117,9 @@
     }
   }
 
-  // ═════════════════════════════════════════════════════════════════════
+  //
   // UI FUNCTIONS
-  // ═════════════════════════════════════════════════════════════════════
+  //
   function showDrawer(title, infoHtml, flightHtml = '') {
     document.getElementById('drawerTitle').textContent = title;
     document.getElementById('tabInfo').innerHTML = infoHtml;
@@ -1139,9 +1139,9 @@
     // Updates handled in fetchVATSIMData
   }
 
-  // ═════════════════════════════════════════════════════════════════════
+  //
   // INITIALIZATION & CONTROLS
-  // ═════════════════════════════════════════════════════════════════════
+  //
   function initControls() {
     // Layer toggles
     document.getElementById('toggleAircraft').addEventListener('click', function() {
@@ -1274,9 +1274,9 @@
     controlsDiv.appendChild(legendBtn);
   }
 
-  // ═════════════════════════════════════════════════════════════════════
+  //
   // START APP
-  // ═════════════════════════════════════════════════════════════════════
+  //
   window.addEventListener('DOMContentLoaded', initMap);
 </script>
 

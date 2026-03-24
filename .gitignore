@@ -1,0 +1,27 @@
+# OS Files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Editor/IDE
+.vscode/
+.idea/
+*.sublime-*
+*.code-workspace
+
+# Node/Build (if ever used)
+node_modules/
+dist/
+build/
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+.env.local
+
+# OS-specific
+.AppleDouble
+.LSOverride
