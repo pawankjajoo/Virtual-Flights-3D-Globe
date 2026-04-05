@@ -1,1284 +1,1419 @@
 <!DOCTYPE html>
-<!-- Crafted by Pawan K Jajoo -->
+<!-- Crafted by Pawan K Jajoo | 3D Globe powered by MapLibre GL JS -->
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Virtual Flights Map 3D Globe | Pushstart Simulators</title>
-  <meta name="description" content="Live 3D globe showing real-time traffic from VATSIM. Experience the world with smooth 3D rendering powered by MapLibre GL JS.">
-  <meta name="keywords" content="virtual flights map, 3D globe, VATSIM, flight simulator, MapLibre GL, live traffic">
-  <meta property="og:title" content="Virtual Flights Map 3D Globe | Pushstart Simulators">
-  <meta property="og:description" content="Live 3D globe showing real-time traffic from VATSIM with smooth 3D rendering.">
-  <meta property="og:type" content="website">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Virtual Flights Map 3D Globe | Pushstart Simulators">
-
-  <!-- MapLibre GL JS v5.21.0 - Free, open-source, no API key needed -->
-  <link href="https://unpkg.com/maplibre-gl@5.21.0/dist/maplibre-gl.css" rel="stylesheet" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Virtual Flights 3D Globe | Pushstart Simulators</title>
+  <meta name="description" content="Live 3D globe showing real-time traffic from VATSIM, IVAO and POSCON networks.">
   <script src="https://unpkg.com/maplibre-gl@5.21.0/dist/maplibre-gl.js"></script>
-
+  <link href="https://unpkg.com/maplibre-gl@5.21.0/dist/maplibre-gl.css" rel="stylesheet" />
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=SF+Mono:wght@400;500;600;700&display=swap');
-
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     *{margin:0;padding:0;box-sizing:border-box}
 
-    /* Cockpit-style dark palette - CSS vars for easy theme tweaks */
     :root{
       --bg:#090d18;--bg2:#10162a;--bg3:#151d2eee;--bg3s:#151d2e;
       --bdr:#1a2844;--acc:#22d3ee;--acc2:#22d3ee44;
       --grn:#34d399;--grn2:#34d39944;--amb:#fbbf24;--red:#f87171;
       --t1:#e2e8f0;--t2:#94a3b8;--t3:#475569;
-      --alt-ground:#d1d5db;--alt-low:#06b6d4;--alt-mid:#3b82f6;
-      --alt-high:#22d3ee;--alt-upper:#fbbf24;
+      --hdr-bg:#10162a;--hdr-bdr:#1a2844;--hdr-t1:#e2e8f0;--hdr-t2:#94a3b8;
     }
 
-    /* Full-viewport layout - no scrollbars, flexbox column structure */
-    html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--t1)}
+    /* Day mode: high-contrast text, but header/footer stay dark */
+    body.day-mode{
+      --bg:#f0f4f8;--bg2:#e2e8f0;--bg3:#ffffffee;--bg3s:#ffffff;
+      --bdr:#b0b8c4;--acc:#0891b2;--acc2:#0891b244;
+      --grn:#059669;--grn2:#06966944;--amb:#d97706;--red:#dc2626;
+      --t1:#000000;--t2:#1e293b;--t3:#334155;
+    }
 
-    #app{width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden}
+    html,body{width:100%;height:100%;overflow:hidden;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--t1)}
+    #map{width:100%;height:100%}
 
-    /* HEADER */
+    /* Header - always dark */
     .header{
-      flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
-      padding:0 14px;background:var(--bg2);border-bottom:1px solid var(--bdr);
-      height:44px;z-index:2000;gap:10px;
+      position:absolute;top:0;left:0;right:0;height:48px;z-index:100;
+      background:linear-gradient(to bottom,var(--hdr-bg),rgba(16,22,42,0.85));
+      border-bottom:1px solid var(--hdr-bdr);
+      display:flex;align-items:center;padding:0 16px;gap:16px;font-size:12px;
+      color:var(--hdr-t2);
     }
-
-    .header-left{display:flex;align-items:center;gap:10px;flex-shrink:0}
-
-    .ps-logo{height:18px;width:auto;opacity:.92;flex-shrink:0;cursor:pointer;transition:opacity .2s}
-    .ps-logo:hover{opacity:1}
-
-    .divider{width:1px;height:22px;background:var(--bdr);flex-shrink:0}
-
-    .vr-brand{display:flex;align-items:center;gap:7px;flex-shrink:0;cursor:pointer;text-decoration:none}
-    .vr-icon{
-      width:24px;height:24px;border-radius:5px;
-      background:linear-gradient(135deg,#22d3ee,#6366f1);
-      display:flex;align-items:center;justify-content:center;
-      font-size:10px;font-weight:700;color:#fff;font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;
-      flex-shrink:0;
-    }
-    .vr-name{font-weight:600;font-size:14px;letter-spacing:-.02em;white-space:nowrap;color:var(--t1)}
-    .vr-name span{color:var(--acc)}
-
-    .header-center{flex:1;display:flex;align-items:center;justify-content:center;gap:14px;min-width:0}
-
-    .stat{display:flex;align-items:center;gap:5px;font-size:11px;font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;white-space:nowrap}
+    .logo{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--acc);font-size:14px;flex-shrink:0;white-space:nowrap}
+    .logo-icon{width:22px;height:22px;border-radius:5px;background:linear-gradient(135deg,#22d3ee,#6366f1);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;font-family:monospace}
+    .stats{display:flex;gap:16px;flex:1;justify-content:center}
+    .stat{display:flex;align-items:center;gap:5px;white-space:nowrap;font-family:'SF Mono',SFMono-Regular,monospace;font-size:11px}
     .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
-    .dot-p{background:var(--acc);box-shadow:0 0 6px var(--acc2)}
-    .dot-a{background:var(--grn);box-shadow:0 0 6px var(--grn2)}
-    .dot-live{background:var(--grn);animation:pls 2s infinite}
+    .dot-p{background:#22d3ee;box-shadow:0 0 6px #22d3ee44}
+    .dot-a{background:#34d399;box-shadow:0 0 6px #34d39944}
+    .dot-live{background:#34d399;animation:pls 2s infinite}
     @keyframes pls{0%,100%{opacity:1}50%{opacity:.3}}
-    .stat-lbl{color:var(--t2)}
-    .stat-val{color:var(--t1);font-weight:600}
+    .stat-lbl{color:var(--hdr-t2)}
+    .stat-val{color:var(--hdr-t1);font-weight:600}
+    .hdr-btn{padding:5px 10px;background:transparent;border:1px solid var(--hdr-bdr);border-radius:6px;color:var(--hdr-t2);cursor:pointer;font-size:11px;transition:all .2s;font-family:inherit}
+    .hdr-btn:hover{border-color:#22d3ee;color:#e2e8f0}
 
-    .stat-lbl::before{content:attr(data-full)}
-    @media(max-width:799px){.stat-lbl::before{content:attr(data-short)}}
-    @media(max-width:479px){.stat-lbl{display:none}.stat{gap:3px;font-size:10px}}
-
-    .header-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
-
-    .settings-btn{
-      width:30px;height:30px;border-radius:10px;border:1px solid var(--bdr);
-      background:transparent;color:var(--t2);cursor:pointer;
-      display:flex;align-items:center;justify-content:center;transition:all .18s ease;
-    }
-    .settings-btn:hover{border-color:var(--acc);color:var(--t1)}
-
-    /* CONTENT */
-    .content{flex:1;position:relative;overflow:hidden;min-height:0}
-
-    #map{width:100%;height:100%;background:var(--bg);background-image:radial-gradient(circle at 20% 50%, rgba(34, 211, 238, 0.03) 0%, transparent 50%)}
-
-    /* ─ SEARCH OVERLAY ─ */
-    .search-box{
-      position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:1500;
-      width:min(340px,90vw);
-    }
-    .search-input{
-      width:100%;padding:8px 12px 8px 34px;background:var(--bg3s);
-      border:1px solid var(--bdr);border-radius:12px;color:var(--t1);
-      font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;font-size:12px;outline:none;
-      backdrop-filter:blur(12px);transition:border-color .2s;
-    }
+    /* Search */
+    .search-wrap{position:absolute;top:56px;left:50%;transform:translateX(-50%);z-index:90;width:min(340px,88vw)}
+    .search-input{width:100%;padding:8px 12px 8px 32px;background:var(--bg3s);border:1px solid var(--bdr);border-radius:10px;color:var(--t1);font-size:12px;outline:none;font-family:monospace;backdrop-filter:blur(8px);transition:border-color .2s}
     .search-input::placeholder{color:var(--t3)}
     .search-input:focus{border-color:var(--acc)}
+    .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--t3);font-size:13px;pointer-events:none}
+    .search-results{position:absolute;top:100%;left:0;right:0;background:var(--bg3s);border:1px solid var(--bdr);border-top:none;border-radius:0 0 10px 10px;max-height:260px;overflow-y:auto;display:none;z-index:91}
+    .search-results.active{display:block}
+    .sr-item{padding:8px 12px;border-bottom:1px solid var(--bdr);cursor:pointer;font-size:11px;color:var(--t2);transition:background .15s}
+    .sr-item:hover{background:var(--bg2);color:var(--t1)}
+    .sr-item:last-child{border-bottom:none}
 
-    /* ─ MAP CONTROLS ─ */
-    .map-controls{
-      position:absolute;bottom:20px;right:14px;z-index:1400;display:flex;flex-direction:column;gap:6px;
-    }
-    .map-control-btn{
-      width:36px;height:36px;border-radius:10px;background:var(--bg3s);
-      border:1px solid var(--bdr);color:var(--t2);cursor:pointer;
-      display:flex;align-items:center;justify-content:center;transition:all .18s ease;
-      font-size:16px;backdrop-filter:blur(8px);font-weight:600;
-    }
-    .map-control-btn:hover{background:var(--bg3);border-color:var(--acc);color:var(--t1)}
-
-    /* ─ LAYER TOGGLES (Right side) ─ */
-    .layer-toggles{
-      position:absolute;top:70px;right:14px;z-index:1400;display:flex;flex-direction:column;gap:6px;
-    }
-    .layer-toggle{
-      width:38px;height:36px;border-radius:12px;background:var(--bg3s);
-      border:1px solid var(--bdr);color:var(--t2);cursor:pointer;
-      display:flex;align-items:center;justify-content:center;font-size:13px;
-      transition:all .18s ease;backdrop-filter:blur(8px);font-weight:600;font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;
-    }
-    .layer-toggle:hover{border-color:var(--acc);color:var(--t1)}
-    .layer-toggle.active{background:var(--acc);border-color:var(--acc);color:var(--bg);box-shadow:0 0 12px rgba(34,211,238,.4)}
-
-    /* ─ ALTITUDE BAND PANEL ─ */
-    #altitudePanel{
-      position:absolute;top:295px;right:14px;z-index:1400;
-      background:var(--bg3s);border:1px solid var(--bdr);border-radius:12px;
-      padding:10px;max-width:160px;display:none;backdrop-filter:blur(8px);
-    }
-    #altitudePanel.open{display:block}
-    .alt-band-item{
-      display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:10px;cursor:pointer;
-      font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;
-    }
-    .alt-band-item:last-child{margin-bottom:0}
-    .alt-band-checkbox{width:14px;height:14px;border:1px solid var(--bdr);border-radius:3px;
-      display:flex;align-items:center;justify-content:center;background:transparent;cursor:pointer;transition:all .18s}
-    .alt-band-checkbox.checked{background:var(--acc);border-color:var(--acc)}
-    .alt-band-checkbox.checked::after{content:'✓';color:var(--bg);font-size:9px;font-weight:700}
-    .alt-band-label{color:var(--t2);flex:1}
-    .alt-band-color{width:10px;height:10px;border-radius:2px;flex-shrink:0}
-
-    /* ─ LEGEND PANEL ─ */
-    #legend{
-      position:absolute;bottom:50px;left:14px;z-index:1400;
-      background:var(--bg3s);border:1px solid var(--bdr);border-radius:12px;
-      padding:12px;max-width:200px;max-height:280px;overflow-y:auto;
-      backdrop-filter:blur(12px);display:none;
-      font-size:11px;font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;
-    }
-    #legend.open{display:block}
-    .legend-section{margin-bottom:12px}
-    .legend-section:last-child{margin-bottom:0}
-    .legend-section-title{font-weight:600;color:var(--acc);margin-bottom:6px;font-size:10px;text-transform:uppercase}
-    .legend-item{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-    .legend-item:last-child{margin-bottom:0}
-    .legend-color{width:12px;height:12px;border-radius:3px;flex-shrink:0}
-    .legend-label{color:var(--t2);font-size:10px}
-
-    /* ─ ATIS VOICE BUTTON ─ */
-    .atis-btn{
-      position:absolute;bottom:14px;left:14px;z-index:1400;
-      width:36px;height:36px;border-radius:10px;background:var(--bg3s);
-      border:1px solid var(--bdr);color:var(--t2);cursor:pointer;
-      display:flex;align-items:center;justify-content:center;transition:all .18s ease;
-      font-size:16px;backdrop-filter:blur(8px);
-    }
-    .atis-btn:hover{border-color:var(--acc);color:var(--t1)}
-    .atis-btn.playing{background:var(--amb);border-color:var(--amb);color:var(--bg);box-shadow:0 0 12px rgba(251,191,36,.4)}
-
-    /* ─ INFO DRAWER (Bottom slide-up) ─ */
-    #infoDrawer{
-      position:absolute;bottom:-100%;left:0;right:0;z-index:1300;
-      background:var(--bg2);border-top:1px solid var(--bdr);
-      max-height:45vh;overflow-y:auto;transition:bottom .28s ease;
-      backdrop-filter:blur(8px);
-    }
-    #infoDrawer.open{bottom:0}
-
-    .drawer-header{
-      display:flex;align-items:center;justify-content:space-between;
-      padding:12px 14px;border-bottom:1px solid var(--bdr);flex-shrink:0;
-    }
-    .drawer-title{font-weight:600;font-size:13px;color:var(--t1)}
-    .drawer-close{background:none;border:none;color:var(--t2);cursor:pointer;padding:4px;transition:color .2s}
-    .drawer-close:hover{color:var(--t1)}
-
-    .drawer-tabs{
-      display:flex;gap:8px;padding:8px 14px;border-bottom:1px solid var(--bdr);flex-shrink:0;
-      font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;font-size:10px;
-    }
-    .drawer-tab{
-      padding:6px 10px;border-radius:6px;background:transparent;color:var(--t3);
-      border:1px solid transparent;cursor:pointer;transition:all .18s ease;
-      font-weight:600;text-transform:uppercase;letter-spacing:.04em;
-    }
-    .drawer-tab:hover{color:var(--t2)}
-    .drawer-tab.active{background:var(--acc);color:var(--bg);border-color:var(--acc)}
-
-    .drawer-content{padding:12px 14px;font-size:11px}
-    .drawer-content div{margin-bottom:10px}
-
-    /* ─ SIDE PANEL (Right slide-out) ─ */
-    #sidePanel{
-      position:absolute;top:0;right:-100%;width:min(320px,100vw);height:100%;
-      background:var(--bg2);border-left:1px solid var(--bdr);z-index:1200;
-      transition:right .28s ease;flex-direction:column;display:flex;
-      backdrop-filter:blur(8px);
-    }
-    #sidePanel.open{right:0}
-
-    .side-header{
-      display:flex;align-items:center;justify-content:space-between;
-      padding:12px;border-bottom:1px solid var(--bdr);flex-shrink:0;
-    }
-    .side-title{font-weight:600;font-size:12px;color:var(--t1);text-transform:uppercase;letter-spacing:.05em;font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace}
-    .side-close{background:none;border:none;color:var(--t2);cursor:pointer;padding:4px;transition:color .2s}
-    .side-close:hover{color:var(--t1)}
-
-    .side-content{flex:1;overflow-y:auto;padding:8px}
-    .traffic-item{
-      padding:8px;margin-bottom:4px;background:var(--bg3s);border-radius:8px;
-      border:1px solid var(--bdr);cursor:pointer;transition:all .18s ease;
-      border-left:3px solid transparent;
-      font-size:11px;font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;
-    }
-    .traffic-item:hover{background:var(--bg3);border-color:var(--acc)}
-    .traffic-item.active{background:var(--bg3);border-left-color:var(--acc);border-color:var(--acc)}
-    .traffic-call{font-weight:600;color:var(--acc);display:block;margin-bottom:2px}
-    .traffic-info{color:var(--t3);font-size:10px}
-
-    /* ─ WELCOME POPUP ─ */
-    #welcomePopup{
-      position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:3000;
-      background:var(--bg2);border:1px solid var(--bdr);border-radius:14px;
-      padding:24px;max-width:360px;backdrop-filter:blur(16px);
-      display:none;
-    }
-    #welcomePopup.show{display:block}
-
-    .popup-title{font-size:14px;font-weight:700;margin-bottom:12px;color:var(--acc)}
-    .popup-text{font-size:11px;color:var(--t2);line-height:1.6;margin-bottom:8px}
-    .popup-button{
-      margin-top:16px;padding:8px 16px;border-radius:10px;
-      background:var(--acc);color:var(--bg);border:none;cursor:pointer;
-      font-weight:600;font-size:11px;transition:all .18s ease;
-      width:100%;text-transform:uppercase;letter-spacing:.04em;
-    }
-    .popup-button:hover{box-shadow:0 0 16px rgba(34,211,238,.4)}
-
-    /* ─ LOADING SCREEN ─ */
-    #loader{
-      position:absolute;inset:0;background:#090d18;
-      display:flex;flex-direction:column;align-items:center;justify-content:center;
-      z-index:9999;transition:opacity .8s ease;overflow:hidden;
-    }
-    #loader.fade{opacity:0;pointer-events:none}
-
-    #loader::before{
-      content:'';position:absolute;
-      width:420px;height:420px;border-radius:50%;
-      background:radial-gradient(circle,rgba(34,211,238,.07) 0%,transparent 70%);
-      top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;
-    }
-
-    .load-dot{
-      position:absolute;width:2px;height:2px;border-radius:50%;
-      background:rgba(34,211,238,.45);
-      animation:ldotFade 3s ease-in-out infinite;
-    }
-    @keyframes ldotFade{0%,100%{opacity:.15;transform:scale(1)}50%{opacity:1;transform:scale(2)}}
-
-    .load-center{
-      display:flex;flex-direction:column;align-items:center;gap:22px;position:relative;z-index:1;
-    }
-
-    .load-logo-img{height:20px;opacity:.85;filter:brightness(1.1)}
-
-    .plane-scene{
-      position:relative;width:180px;height:160px;
-      display:flex;align-items:center;justify-content:center;
-    }
-
-    .plane-ring,.plane-ring-2{
-      position:absolute;border-radius:50%;border:1px solid rgba(34,211,238,.18);
-      animation:ringPulse 2.6s ease-in-out infinite;
-    }
-    .plane-ring{width:148px;height:148px}
-    .plane-ring-2{width:104px;height:104px;animation-delay:.9s}
-    @keyframes ringPulse{
-      0%,100%{opacity:.25;transform:scale(.94)}
-      50%{opacity:1;transform:scale(1.06)}
-    }
-
-    .plane-icon{
-      position:relative;z-index:2;
-      animation:planeFloat 2.8s ease-in-out infinite;
-      filter:drop-shadow(0 0 14px rgba(34,211,238,.55));
-    }
-    @keyframes planeFloat{
-      0%,100%{transform:translateY(0) rotate(-7deg)}
-      50%{transform:translateY(-16px) rotate(7deg)}
-    }
-
-    .plane-trail{
-      position:absolute;left:14px;top:50%;transform:translateY(-50%);
-      display:flex;gap:9px;align-items:center;
-    }
-    .plane-trail span{
-      width:4px;height:4px;border-radius:50%;background:var(--acc);
-      animation:trailPulse 1.3s ease-in-out infinite;
-    }
-    .plane-trail span:nth-child(1){animation-delay:.0s;opacity:1}
-    .plane-trail span:nth-child(2){animation-delay:.18s;opacity:.85;width:3px;height:3px}
-    .plane-trail span:nth-child(3){animation-delay:.36s;opacity:.65;width:2.5px;height:2.5px}
-    .plane-trail span:nth-child(4){animation-delay:.54s;opacity:.4;width:2px;height:2px}
-    .plane-trail span:nth-child(5){animation-delay:.72s;opacity:.2;width:1.5px;height:1.5px}
-    @keyframes trailPulse{
-      0%,100%{transform:scale(.8);filter:brightness(.7)}
-      50%{transform:scale(1.3);filter:brightness(1.4)}
-    }
-
-    .load-brand{
-      font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;font-size:12px;font-weight:700;
-      color:var(--t1);letter-spacing:.12em;text-transform:uppercase;
-    }
-    .load-brand span{color:var(--acc)}
-
-    .load-msg-row{
-      display:flex;align-items:center;gap:4px;font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;
-      font-size:11px;color:var(--t2);
-    }
-    .load-dots-anim span{
-      display:inline-block;width:3px;height:3px;border-radius:50%;background:var(--acc);
-      animation:dotBounce .6s infinite;margin:0 2px;
-    }
-    .load-dots-anim span:nth-child(2){animation-delay:.1s}
-    .load-dots-anim span:nth-child(3){animation-delay:.2s}
-    @keyframes dotBounce{0%,100%{opacity:.3}50%{opacity:1}}
-
-    .load-bar{
-      width:120px;height:2px;background:var(--bdr);border-radius:1px;overflow:hidden;
-    }
-    .load-bar-fill{
-      height:100%;background:linear-gradient(90deg,var(--acc),var(--grn));
-      animation:barFill 2.4s ease-in-out infinite;
-    }
-    @keyframes barFill{0%{width:0}100%{width:100%}}
-
-    /* FOOTER */
+    /* Footer - always dark */
     .footer{
-      flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
-      padding:3px 12px;background:var(--bg2);border-top:1px solid var(--bdr);
-      font-size:10px;font-family:'SF Mono',SFMono-Regular,'IBM Plex Mono',Menlo,monospace;color:var(--t3);
-      height:24px;z-index:2000;gap:8px;
+      position:absolute;bottom:0;left:0;right:0;height:32px;z-index:100;
+      background:linear-gradient(to top,var(--hdr-bg),rgba(16,22,42,0.85));
+      border-top:1px solid var(--hdr-bdr);
+      display:flex;align-items:center;padding:0 16px;gap:24px;font-size:10px;
+      color:var(--hdr-t2);font-family:'SF Mono',SFMono-Regular,monospace;
     }
-    .upd{display:flex;align-items:center;gap:4px}
-    .upd.ok{color:var(--grn)}
-    .upd.stale{color:var(--amb)}
-    .coords{color:var(--t3);font-size:9px}
+    .ft-item{display:flex;gap:5px;align-items:center}
+    .ft-lbl{color:var(--hdr-t2);text-transform:uppercase;letter-spacing:.5px;font-size:9px}
+    .ft-val{color:var(--hdr-t1)}
 
-    /* Responsive mobile */
-    @media(max-width:640px){
-      .header{padding:0 8px;height:40px}
-      .header-center{gap:8px;font-size:10px}
-      #sidePanel{width:100%}
-      .map-controls{bottom:14px;right:10px}
-      .layer-toggles{top:54px;right:10px}
-      #altitudePanel{top:250px;right:10px;max-width:140px}
+    /* Layer toggles (right side) */
+    .layer-toggles{position:absolute;top:60px;right:14px;z-index:80;display:flex;flex-direction:column;gap:5px}
+    .layer-toggle{width:38px;height:34px;border-radius:10px;background:rgba(9,13,24,0.85);border:1px solid rgba(34,211,238,0.25);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-family:monospace;transition:all .18s;backdrop-filter:blur(6px);box-shadow:0 2px 8px rgba(0,0,0,0.4)}
+    .layer-toggle:hover{border-color:var(--acc);color:var(--t1)}
+    .layer-toggle.active{background:var(--acc);border-color:var(--acc);color:var(--bg);box-shadow:0 0 10px rgba(34,211,238,.35)}
+
+    /* Map controls (bottom right) */
+    .map-controls{position:absolute;bottom:44px;right:14px;z-index:80;display:flex;flex-direction:column;gap:5px}
+    .mc-btn{width:36px;height:36px;border-radius:10px;background:rgba(9,13,24,0.85);border:1px solid rgba(34,211,238,0.25);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;transition:all .18s;backdrop-filter:blur(6px);box-shadow:0 2px 8px rgba(0,0,0,0.4)}
+    .mc-btn:hover{background:var(--bg3);border-color:var(--acc);color:var(--t1)}
+
+    /* Legend (bottom left) */
+    .legend{position:absolute;bottom:44px;left:14px;z-index:80;background:var(--bg3s);border:1px solid var(--bdr);border-radius:10px;padding:10px 12px;backdrop-filter:blur(8px);font-size:10px;display:none;min-width:140px}
+    .legend.open{display:block}
+    .legend-title{font-weight:700;color:var(--acc);margin-bottom:6px;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+    .legend-row{display:flex;align-items:center;gap:7px;margin-bottom:4px;color:var(--t2);font-size:10px}
+    .legend-row:last-child{margin-bottom:0}
+    .legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .legend-sq{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+
+    /* Legend toggle button */
+    .legend-btn{position:absolute;bottom:44px;left:14px;z-index:79;width:36px;height:36px;border-radius:10px;background:var(--bg3s);border:1px solid var(--bdr);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-family:monospace;backdrop-filter:blur(6px);transition:all .18s}
+    .legend-btn:hover{border-color:var(--acc);color:var(--t1)}
+
+    /* Info Drawer */
+    .info-drawer{position:absolute;bottom:32px;left:0;right:0;z-index:85;background:var(--bg2);border-top:1px solid var(--bdr);max-height:40vh;overflow-y:auto;transform:translateY(100%);transition:transform .25s ease;backdrop-filter:blur(8px)}
+    .info-drawer.open{transform:translateY(0)}
+    .id-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--bdr)}
+    .id-title{font-weight:700;font-size:13px;color:var(--acc);font-family:monospace}
+    .id-close{background:none;border:none;color:var(--t2);cursor:pointer;font-size:16px;padding:2px 6px}
+    .id-close:hover{color:var(--t1)}
+    .id-tabs{display:flex;gap:6px;padding:6px 14px;border-bottom:1px solid var(--bdr)}
+    .id-tab{padding:4px 10px;border-radius:6px;background:transparent;color:var(--t3);border:1px solid transparent;cursor:pointer;font-size:10px;font-weight:600;text-transform:uppercase;font-family:monospace;transition:all .15s}
+    .id-tab:hover{color:var(--t2)}
+    .id-tab.active{background:var(--acc);color:var(--bg);border-color:var(--acc)}
+    .id-body{padding:10px 14px;font-size:11px}
+    .id-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px}
+    .id-row{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--bdr)}
+    .id-row:last-child{border-bottom:none}
+    .id-lbl{color:var(--t3);text-transform:uppercase;font-size:9px;font-weight:600;letter-spacing:.5px}
+    .id-val{color:var(--t1);font-family:monospace;text-align:right;font-size:11px}
+
+    /* Side Panel */
+    .side-panel{position:absolute;top:48px;right:0;width:min(320px,100vw);height:calc(100% - 80px);background:var(--bg2);border-left:1px solid var(--bdr);z-index:88;transform:translateX(100%);transition:transform .25s ease;display:flex;flex-direction:column;backdrop-filter:blur(8px)}
+    .side-panel.open{transform:translateX(0)}
+    .sp-header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--bdr)}
+    .sp-title{font-weight:700;font-size:11px;color:var(--t1);text-transform:uppercase;letter-spacing:.05em;font-family:monospace}
+    .sp-tabs{display:flex;gap:4px;padding:6px 12px;border-bottom:1px solid var(--bdr)}
+    .sp-tab{padding:4px 8px;border-radius:5px;background:transparent;color:var(--t3);border:none;cursor:pointer;font-size:10px;font-weight:600;font-family:monospace;transition:all .15s}
+    .sp-tab.active{background:var(--acc);color:var(--bg)}
+    .sp-close{background:none;border:none;color:var(--t2);cursor:pointer;font-size:16px;padding:2px 6px}
+    .sp-close:hover{color:var(--t1)}
+    .sp-body{flex:1;overflow-y:auto;padding:6px}
+    .ti{padding:7px 8px;margin-bottom:3px;background:var(--bg3s);border-radius:6px;border:1px solid var(--bdr);cursor:pointer;transition:all .15s;border-left:3px solid transparent;font-size:10px;font-family:monospace}
+    .ti:hover{background:var(--bg3);border-color:var(--acc)}
+    .ti.active{border-left-color:var(--acc);border-color:var(--acc)}
+    .ti-call{font-weight:700;color:var(--acc);display:block;margin-bottom:2px;font-size:11px}
+    .ti-info{color:var(--t3);font-size:9px;display:flex;gap:8px}
+
+    /* Welcome Popup */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;backdrop-filter:blur(3px)}
+    .overlay.show{display:block}
+    .popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:201;background:var(--bg2);border:1px solid var(--bdr);border-radius:14px;padding:24px;max-width:380px;width:90vw;display:none}
+    .popup.show{display:block}
+    .popup-title{font-size:15px;font-weight:700;color:var(--acc);margin-bottom:10px}
+    .popup-text{font-size:11px;color:var(--t2);line-height:1.6;margin-bottom:6px}
+    .popup-btn{margin-top:14px;width:100%;padding:8px;border-radius:8px;background:var(--acc);color:var(--bg);border:none;cursor:pointer;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;transition:box-shadow .2s}
+    .popup-btn:hover{box-shadow:0 0 14px rgba(34,211,238,.35)}
+
+    /* Loading Screen */
+    .loader{position:fixed;inset:0;background:#090d18;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;transition:opacity .6s ease}
+    .loader.fade{opacity:0;pointer-events:none}
+    .loader-text{color:#94a3b8;font-size:13px;margin-bottom:16px}
+    .loader-bar{width:180px;height:2px;background:#1a2844;border-radius:1px;overflow:hidden}
+    .loader-fill{height:100%;background:linear-gradient(90deg,#22d3ee,#fbbf24);width:0%;animation:lbar 2s ease-in-out infinite}
+    @keyframes lbar{0%{width:0%}50%{width:100%}100%{width:0%}}
+
+    /* Network dropdown */
+    .dd{position:relative}
+    .dd-menu{position:absolute;top:100%;right:0;background:var(--hdr-bg);border:1px solid var(--hdr-bdr);border-radius:6px;min-width:140px;display:none;z-index:110;margin-top:4px}
+    .dd-menu.open{display:block}
+    .dd-item{padding:7px 12px;color:var(--hdr-t2);cursor:pointer;font-size:11px;transition:all .15s;border-bottom:1px solid var(--hdr-bdr)}
+    .dd-item:hover{background:rgba(34,211,238,.1);color:var(--hdr-t1)}
+    .dd-item:last-child{border-bottom:none}
+    .dd-item.active{color:#22d3ee}
+
+    /* Scrollbar */
+    ::-webkit-scrollbar{width:5px}
+    ::-webkit-scrollbar-track{background:var(--bg)}
+    ::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
+
+    /* Hide MapLibre controls */
+    .maplibregl-ctrl-group,.maplibregl-ctrl-logo,.maplibregl-ctrl-attrib{display:none!important}
+
+    @media(max-width:600px){
+      .stat-lbl{display:none}
+      .stats{gap:10px}
+      .header{padding:0 10px;gap:8px}
+      .footer{gap:12px;padding:0 10px}
     }
   </style>
 </head>
 <body>
+  <div id="map"></div>
 
-<div id="app">
-  <!-- HEADER -->
+  <!-- Header (always dark) -->
   <div class="header">
-    <div class="header-left">
-      <a href="https://www.pushstartsims.com" target="_blank" rel="noopener" style="display:flex;align-items:center">
-        <img class="ps-logo"
-             src="https://static.wixstatic.com/media/8cef4e_a9f713cedfff4ea88689521db953de89~mv2.png/v1/fill/w_300,h_65,al_c,q_85,enc_avif,quality_auto/White%20logo%20-%20no%20background.png"
-             alt="Pushstart Simulators"
-             onerror="this.style.display='none'">
-      </a>
-      <div class="divider"></div>
-      <a class="vr-brand" href="#" onclick="return false">
-        <div class="vr-icon">3D</div>
-        <span class="vr-name">Virtual Flights <span>Map</span></span>
-      </a>
+    <div class="logo">
+      <div class="logo-icon">3D</div>
+      Virtual Flights <span style="color:var(--hdr-t2);font-weight:400;font-size:11px;margin-left:2px">Globe</span>
     </div>
-
-    <div class="header-center">
-      <div class="stat" title="Total virtual pilots in-flight">
-        <div class="dot dot-p"></div>
-        <span class="stat-lbl" data-full="Virtual Pilots" data-short="PLTs"></span>
-        <span class="stat-val" id="nPilots">—</span>
-      </div>
-      <div class="stat" title="Active ATC">
-        <div class="dot dot-a"></div>
-        <span class="stat-lbl" data-full="ATC" data-short="ATC"></span>
-        <span class="stat-val" id="nATC">—</span>
-      </div>
-      <div class="stat" title="Live feed">
-        <div class="dot dot-live"></div>
-        <span class="stat-lbl" data-full="Live" data-short="Live"></span>
-      </div>
+    <div class="stats">
+      <div class="stat"><div class="dot dot-p"></div><span class="stat-lbl">Pilots </span><span class="stat-val" id="s-pilots">0</span></div>
+      <div class="stat"><div class="dot dot-a"></div><span class="stat-lbl">ATC </span><span class="stat-val" id="s-atc">0</span></div>
+      <div class="stat"><div class="dot dot-live"></div><span class="stat-lbl">Status </span><span class="stat-val" id="s-status">...</span></div>
     </div>
-
-    <div class="header-right">
-      <button class="settings-btn" id="togglePanel" title="Traffic list">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 6h18M3 12h18M3 18h18"/>
-        </svg>
-      </button>
+    <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+      <div class="dd">
+        <button class="hdr-btn" id="net-btn">ALL</button>
+        <div class="dd-menu" id="net-menu">
+          <div class="dd-item active" data-net="all">All Networks</div>
+          <div class="dd-item" data-net="vatsim">VATSIM</div>
+          <div class="dd-item" data-net="ivao">IVAO</div>
+          <div class="dd-item" data-net="poscon">POSCON</div>
+        </div>
+      </div>
+      <button class="hdr-btn" id="theme-btn" title="Toggle day/night">&#x1F319;</button>
+      <button class="hdr-btn" id="list-btn" title="Traffic list">&#9776;</button>
     </div>
   </div>
 
-  <!-- CONTENT -->
-  <div class="content">
-    <div id="map"></div>
-
-    <!-- Search overlay -->
-    <div class="search-box">
-      <input type="text" id="searchInput" class="search-input" placeholder="Search airports, callsigns...">
-    </div>
-
-    <!-- Layer toggles (right side) -->
-    <div class="layer-toggles">
-      <button class="layer-toggle active" id="toggleAircraft" title="Toggle Aircraft" data-layer="aircraft">A</button>
-      <button class="layer-toggle active" id="toggleATC" title="Toggle ATC" data-layer="atc">C</button>
-      <button class="layer-toggle" id="toggleRoutes" title="Toggle Routes" data-layer="routes">R</button>
-      <button class="layer-toggle" id="toggleWeather" title="Toggle Weather" data-layer="weather">W</button>
-      <button class="layer-toggle" id="toggleAltitude" title="Altitude Bands" data-layer="altitude">ALT</button>
-    </div>
-
-    <!-- Altitude band panel -->
-    <div id="altitudePanel">
-      <div class="alt-band-item">
-        <div class="alt-band-checkbox checked" data-alt="ground"></div>
-        <span class="alt-band-label">Ground</span>
-        <div class="alt-band-color" style="background:var(--alt-ground)"></div>
-      </div>
-      <div class="alt-band-item">
-        <div class="alt-band-checkbox checked" data-alt="low"></div>
-        <span class="alt-band-label">Low</span>
-        <div class="alt-band-color" style="background:var(--alt-low)"></div>
-      </div>
-      <div class="alt-band-item">
-        <div class="alt-band-checkbox checked" data-alt="mid"></div>
-        <span class="alt-band-label">Mid</span>
-        <div class="alt-band-color" style="background:var(--alt-mid)"></div>
-      </div>
-      <div class="alt-band-item">
-        <div class="alt-band-checkbox checked" data-alt="high"></div>
-        <span class="alt-band-label">High</span>
-        <div class="alt-band-color" style="background:var(--alt-high)"></div>
-      </div>
-      <div class="alt-band-item">
-        <div class="alt-band-checkbox checked" data-alt="upper"></div>
-        <span class="alt-band-label">Upper</span>
-        <div class="alt-band-color" style="background:var(--alt-upper)"></div>
-      </div>
-    </div>
-
-    <!-- Legend panel -->
-    <div id="legend">
-      <div class="legend-section">
-        <div class="legend-section-title">Altitude Bands</div>
-        <div class="legend-item">
-          <div class="legend-color" style="background:var(--alt-ground)"></div>
-          <div class="legend-label">Ground (0-1K ft)</div>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background:var(--alt-low)"></div>
-          <div class="legend-label">Low (1-10K ft)</div>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background:var(--alt-mid)"></div>
-          <div class="legend-label">Mid (10-25K ft)</div>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background:var(--alt-high)"></div>
-          <div class="legend-label">High (25-35K ft)</div>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background:var(--alt-upper)"></div>
-          <div class="legend-label">Upper (35K+ ft)</div>
-        </div>
-      </div>
-      <div class="legend-section">
-        <div class="legend-section-title">Other</div>
-        <div class="legend-item">
-          <div class="legend-color" style="background:var(--grn)"></div>
-          <div class="legend-label">ATC Stations</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Info drawer (bottom) -->
-    <div id="infoDrawer">
-      <div class="drawer-header">
-        <div class="drawer-title" id="drawerTitle">Aircraft Details</div>
-        <button class="drawer-close" id="closeDrawer">✕</button>
-      </div>
-      <div class="drawer-tabs">
-        <button class="drawer-tab active" data-tab="info">INFO</button>
-        <button class="drawer-tab" data-tab="flight">FLIGHT</button>
-      </div>
-      <div class="drawer-content">
-        <div id="tabInfo" class="tab-content">Loading...</div>
-        <div id="tabFlight" class="tab-content" style="display:none">Loading...</div>
-      </div>
-    </div>
-
-    <!-- Side panel (right slide-out) -->
-    <div id="sidePanel">
-      <div class="side-header">
-        <div class="side-title">Traffic</div>
-        <button class="side-close" id="closeSidePanel">✕</button>
-      </div>
-      <div class="side-content" id="trafficList">
-        <div style="text-align:center;color:var(--t3);padding:20px">Loading...</div>
-      </div>
-    </div>
-
-    <!-- Welcome popup -->
-    <div id="welcomePopup">
-      <div class="popup-title">Welcome to Virtual Flights</div>
-      <div class="popup-text">Real-time 3D globe with live VATSIM traffic, ATC stations, and altitude-based visualization. Click around the globe to explore, use the search bar to find aircraft or airports, and check layer toggles for different data views.</div>
-      <button class="popup-button" onclick="document.getElementById('welcomePopup').classList.remove('show')">Get Started</button>
-    </div>
-
-    <!-- Loading screen -->
-    <div id="loader">
-      <div class="load-dot" style="top:20%;left:30%;animation-delay:.2s"></div>
-      <div class="load-dot" style="top:65%;left:10%;animation-delay:.4s"></div>
-      <div class="load-dot" style="top:30%;right:15%;animation-delay:.6s"></div>
-      <div class="load-dot" style="bottom:20%;right:5%;animation-delay:.8s"></div>
-      <div class="load-center">
-        <div class="plane-scene">
-          <div class="plane-ring"></div>
-          <div class="plane-ring-2"></div>
-          <div class="plane-trail">
-            <span></span><span></span><span></span><span></span><span></span>
-          </div>
-          <svg class="plane-icon" width="48" height="48" viewBox="0 0 48 48" fill="none">
-            <path d="M24 6L36 18V30L24 28L12 30V18L24 6Z" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round" opacity="0.9"/>
-            <circle cx="24" cy="24" r="3" fill="currentColor"/>
-          </svg>
-        </div>
-        <div class="load-brand">Virtual<span>Flights</span></div>
-        <div class="load-msg-row">
-          <span>Initializing globe</span>
-          <div class="load-dots-anim"><span></span><span></span><span></span></div>
-        </div>
-        <div class="load-bar"><div class="load-bar-fill"></div></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- FOOTER -->
+  <!-- Footer (always dark) -->
   <div class="footer">
-    <div class="upd ok">
-      <span id="updateStatus">●</span>
-      <span id="updateTime">Live</span>
-    </div>
+    <div class="ft-item"><span class="ft-lbl">Status</span><span class="ft-val" id="f-status">Connecting...</span></div>
+    <div class="ft-item"><span class="ft-lbl">Coords</span><span class="ft-val" id="f-coords">0.00, 0.00</span></div>
+    <div class="ft-item"><span class="ft-lbl">Zoom</span><span class="ft-val" id="f-zoom">1.0</span></div>
+    <div class="ft-item"><span class="ft-lbl">Updated</span><span class="ft-val" id="f-time">--:--</span></div>
     <div style="flex:1"></div>
-    <div class="coords" id="coordDisplay">0.00°, 0.00°</div>
+    <div class="ft-item" style="color:var(--hdr-t2)">Pushstart Simulators</div>
   </div>
-</div>
+
+  <!-- Search -->
+  <div class="search-wrap">
+    <span class="search-icon">&#x1F50D;</span>
+    <input type="text" class="search-input" id="searchInput" placeholder="Search callsign, airport, frequency...">
+    <div class="search-results" id="searchResults"></div>
+  </div>
+
+  <!-- Layer Toggles -->
+  <div class="layer-toggles">
+    <button class="layer-toggle active" data-layer="atc" title="ATC coverage">ATC</button>
+    <button class="layer-toggle active" data-layer="routes" title="Flight routes">RTE</button>
+    <button class="layer-toggle" data-layer="weather" title="Weather">WX</button>
+    <button class="layer-toggle" data-layer="vectors" title="Speed vectors">VEC</button>
+    <button class="layer-toggle" data-layer="fir" title="FIR boundaries">FIR</button>
+    <button class="layer-toggle" data-layer="sigmet" title="SIGMETs">SIG</button>
+  </div>
+
+  <!-- Map Controls -->
+  <div class="map-controls">
+    <button class="mc-btn" id="zoomIn" title="Zoom in">+</button>
+    <button class="mc-btn" id="zoomOut" title="Zoom out">&minus;</button>
+    <button class="mc-btn" id="resetView" title="Reset view">&#x21BA;</button>
+    <button class="mc-btn" id="legendBtn" title="Legend" style="font-size:10px;font-weight:700;font-family:monospace">KEY</button>
+  </div>
+
+  <!-- Legend Panel -->
+  <div class="legend" id="legendPanel">
+    <div class="legend-title">Aircraft Type</div>
+    <div class="legend-row"><div class="legend-sq" style="background:#38bdf8"></div> Heavy (747, A380)</div>
+    <div class="legend-row"><div class="legend-sq" style="background:#a78bfa"></div> Narrow-body (A320, 737)</div>
+    <div class="legend-row"><div class="legend-sq" style="background:#f472b6"></div> Business Jet</div>
+    <div class="legend-row"><div class="legend-sq" style="background:#94a3b8"></div> Regional (CRJ, ATR)</div>
+    <div class="legend-row"><div class="legend-sq" style="background:#fb923c"></div> GA (Cessna, Piper)</div>
+    <div class="legend-row"><div class="legend-sq" style="background:#e2e8f0"></div> Military</div>
+    <div class="legend-row"><div class="legend-sq" style="background:#64748b"></div> Helicopter</div>
+    <div style="margin-top:8px" class="legend-title">Altitude (icon size)</div>
+    <div class="legend-row" style="font-size:9px;opacity:.7">&#9992; Small = low &nbsp; &#9992;&#9992; Large = high</div>
+    <div style="margin-top:8px" class="legend-title">ATC</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#34d399"></div> Active Controller</div>
+  </div>
+
+  <!-- Info Drawer -->
+  <div class="info-drawer" id="infoDrawer">
+    <div class="id-header">
+      <span class="id-title" id="id-callsign">---</span>
+      <button class="id-close" id="id-close">&times;</button>
+    </div>
+    <div class="id-tabs">
+      <button class="id-tab active" data-tab="info">Info</button>
+      <button class="id-tab" data-tab="route">Route</button>
+      <button class="id-tab" data-tab="remarks">Remarks</button>
+      <button class="id-tab" data-tab="atc">ATC</button>
+    </div>
+    <div class="id-body" id="id-body"></div>
+  </div>
+
+  <!-- Side Panel -->
+  <div class="side-panel" id="sidePanel">
+    <div class="sp-header">
+      <span class="sp-title">Traffic</span>
+      <button class="sp-close" id="sp-close">&times;</button>
+    </div>
+    <div class="sp-tabs">
+      <button class="sp-tab active" data-stab="pilots">Pilots</button>
+      <button class="sp-tab" data-stab="atc">ATC</button>
+    </div>
+    <div class="sp-body" id="sp-body"></div>
+  </div>
+
+  <!-- Welcome Popup -->
+  <div class="overlay" id="overlay"></div>
+  <div class="popup" id="popup">
+    <div class="popup-title">Welcome to Virtual Flights 3D Globe</div>
+    <div class="popup-text">Explore real-time flight data from VATSIM, IVAO, and POSCON on an interactive 3D globe.</div>
+    <div class="popup-text">Drag to rotate the globe. Click aircraft to view flight details. Use the layer toggles on the right to show ATC coverage, routes, weather, and more.</div>
+    <div class="popup-text" style="color:var(--acc)">Aircraft icons are colored by type (heavy, medium, GA, etc.) and sized by altitude — larger icons fly higher. Press KEY to see the full legend.</div>
+    <button class="popup-btn" id="popup-btn">Explore the Globe</button>
+  </div>
+
+  <!-- Loading Screen -->
+  <div class="loader" id="loader">
+    <div class="loader-text">Initializing Virtual Flights 3D Globe...</div>
+    <div class="loader-bar"><div class="loader-fill"></div></div>
+  </div>
 
 <script>
-  //
-  // CONFIGURATION
-  //
-  const CONFIG = {
-    VATSIM_URL: 'https://data.vatsim.net/v3/vatsim-data.json',
-    CORS_PROXY: 'https://corsproxy.io/?',
-    POLL_INTERVAL: 15000,
-    STYLE_URL: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
-  };
+(function(){
+'use strict';
 
-  //
-  // STATE
-  //
-  const STATE = {
-    map: null,
-    mapReady: false,
-    pilots: [],
-    controllers: [],
-    lastUpdate: null,
-    selectedPilot: null,
-    layerVisibility: {
-      aircraft: true,
-      atc: true,
-      routes: false,
-      weather: false
-    },
-    altitudeBands: {
-      ground: true,
-      low: true,
-      mid: true,
-      high: true,
-      upper: true
-    }
-  };
+// ============================================================================
+// CONFIG
+// ============================================================================
+const CFG = {
+  PROXY: 'https://pss-cors-proxy.pushstartsims-com.workers.dev',
+  BATCH_PRI: '/batch?mode=primary',
+  BATCH_FULL: '/batch?mode=full',
+  POLL_ACTIVE: 30000,
+  POLL_IDLE: 60000,
+  INTERP_FPS: 30,
+  STYLE_DARK: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+  STYLE_LIGHT: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+};
 
-  //
-  // MAP INITIALIZATION
-  //
-  async function initMap() {
-    try {
-      // Create map with Carto style URL (MapLibre handles CORS for style loading)
-      STATE.map = new maplibregl.Map({
-        container: 'map',
-        style: CONFIG.STYLE_URL,
-        center: [0, 20],
-        zoom: 1.8,
-        pitch: 30,
-        bearing: 0,
-        renderWorldCopies: false,
-        antialias: true
-      });
+// ============================================================================
+// AIRCRAFT CLASSIFICATION
+// ============================================================================
+// Classify aircraft by ICAO type code — ported from flat map (regex-based)
+function acCategory(typeCode){
+  if(!typeCode) return 'medium';
+  const t=(typeCode+'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(/^(R22|R44|R66|B06|B47|B05|B06T|B07|B0[5-9]|B2[01][24]|B4[012][29]|EC[0-9]|EC[12][0-9]|EC[13][35]|EC[14]5|AS[0-9]|AS3[0-9]|A109|A119|A139|A149|A169|A189|AW[0-9]|AW1[0-9]|S55|S58|S61|S64|S70|S76|S92|UH1|UH60|AH6|AH64|CH47|CH53|MD5|MD6|MD90[0-9]|BK17|H269|H500|H60|BO10|KA[0-9]|KA2[26]|KA3[12]|MI[0-9]|MI[12][0-9]|MI[234][0-9]|SA3[1-6]|NH90|LAMA|PUMA|LYNX|GAZE|HUCO|CABR|FH11|EN28|G2CA|EXPL)/.test(t)) return 'helicopter';
+  if(/^(B74|B75|B76|B77|B78|B74F|A38|A34|A35|A33|B748|B744|B763|B764|B77[WL]|AN1|C5A|C17|IL9|MD1|MD9)/.test(t)) return 'heavy';
+  if(/^(C25[0-9AB]|C50|C51|C52|C55|C56|C68|C70|CL[36][0-9]|LJ[2-7][05]|LJ[0-9]|H25|HA4T|HDJT|E50P|E55P|EA50|SF50|PC24|PRM1|GALX|GL5T|GL7T|GLF[2-6]|GLEX|G[12][0-9][0-9]|G280|G[345][0-9][0-9]|FA[257][0-9X]|F2TH|F900|BE4[0-9]|MU30|ASTR)/.test(t)) return 'lightjet';
+  if(/^(AT[457]|DH[18C]|E1[07][05]|E[12][0-9][05]|CRJ|SF34|JS41|BE19|J3[12]|P180|DHC[68]|PC12|TBM|SR[23]|DA[34]|C17[23]|B350)/.test(t)) return 'regional';
+  if(/^(C1[5-9][02458]|C2[0-9]|C3[0-9]|PA[234]|BE[235]|B60|C17[0-3]|P28|C152|C172|C182|EA[0-9]|RV[0-9]|VANS|M20|AA[0-9]|DR[0-9]|DV20|TB[0-9]|COL[34]|VENT|PIPA|CIRR)/.test(t)) return 'ga';
+  if(/^(F[01][4-8]|F2[0-2]|MIG|SU[0-9]|B1|B2|B52|A10|F117|EF1|EURO|TXCAS|PC21|L39|L159|BAE1|JA37|AJS3)/.test(t)) return 'military';
+  return 'medium';
+}
 
-      // Wait for style to fully load
-      await new Promise((resolve) => {
-        let resolved = false;
-        const done = () => { if (!resolved) { resolved = true; resolve(); } };
-        if (STATE.map.isStyleLoaded()) { done(); }
-        else { STATE.map.once('style.load', done); }
-        setTimeout(done, 10000); // ultimate fallback
-      });
+// Aircraft category color palette — matches flat map exactly
+const CAT_COLORS={
+  heavy:      '#38bdf8',   // SKY BLUE
+  medium:     '#a78bfa',   // SOFT VIOLET
+  lightjet:   '#f472b6',   // HOT PINK
+  regional:   '#94a3b8',   // SILVER GRAY
+  ga:         '#fb923c',   // ORANGE
+  military:   '#e2e8f0',   // BRIGHT WHITE
+  helicopter: '#64748b',   // DARK SLATE
+};
 
-      // Now set globe projection and sky atmosphere AFTER style is loaded
-      STATE.map.setProjection({ type: 'vertical-perspective' });
+const CAT_NAMES={
+  heavy:'Heavy (747, A380)',
+  medium:'Narrow-body (A320, 737)',
+  lightjet:'Business Jet (Citation, G-V)',
+  regional:'Regional (CRJ, ATR)',
+  ga:'General Aviation (C172, PA28)',
+  military:'Military (F-16, F/A-18)',
+  helicopter:'Helicopter',
+};
 
-      // Try to add sky atmosphere (may not work with all styles)
-      try {
-        STATE.map.setSky({
-          'atmosphere-blend': [
-            'interpolate', ['linear'], ['zoom'],
-            0, 1, 5, 1, 7, 0
-          ]
-        });
-      } catch(e) { console.warn('Sky not supported:', e); }
+// SVG silhouette paths per category — ported from flat map
+// All drawn in a -14,-14 28x28 viewBox, nose pointing UP (north)
+const AC_SHAPES={
+  heavy:`<path d="M0,-12 C2,-12 2.2,-8 2.2,-5 L2.2,2 L2.2,7 L0,9 L-2.2,7 L-2.2,2 L-2.2,-5 C-2.2,-8 -2,-12 0,-12Z"/><path d="M-1.8,-11 C-1.2,-12.5 1.2,-12.5 1.8,-11 L2.2,-8 L-2.2,-8Z" opacity=".85"/><path d="M2.2,0 L12,5 L11.5,6.8 L2.2,3Z"/><path d="M-2.2,0 L-12,5 L-11.5,6.8 L-2.2,3Z"/><path d="M2.2,7 L6,10.5 L5.5,12 L0,9.5 L-5.5,12 L-6,10.5 L-2.2,7Z"/><ellipse cx="-5.2" cy="1.8" rx=".9" ry="2"/><ellipse cx="5.2" cy="1.8" rx=".9" ry="2"/><ellipse cx="-9" cy="3.8" rx=".75" ry="1.7"/><ellipse cx="9" cy="3.8" rx=".75" ry="1.7"/>`,
+  medium:`<path d="M0,-11 C1.5,-11 1.6,-7 1.6,-4 L1.6,2 L1.6,7 L0,8.5 L-1.6,7 L-1.6,2 L-1.6,-4 C-1.6,-7 -1.5,-11 0,-11Z"/><path d="M1.6,-.5 L11,4.5 L10.8,6.2 Q8,5 1.6,2.5Z"/><path d="M-1.6,-.5 L-11,4.5 L-10.8,6.2 Q-8,5 -1.6,2.5Z"/><path d="M1.6,7 L5,10 L4.5,11.5 L0,9 L-4.5,11.5 L-5,10 L-1.6,7Z"/><path d="M-.5,5 L.5,5 L.8,10 L0,11 L-.8,10Z"/><ellipse cx="-5.8" cy="2.2" rx=".9" ry="2.2"/><ellipse cx="5.8" cy="2.2" rx=".9" ry="2.2"/>`,
+  lightjet:`<path d="M0,-10 C.8,-10 .9,-6 .9,-3.5 L.9,5 L.9,7 L0,8 L-.9,7 L-.9,5 L-.9,-3.5 C-.9,-6 -.8,-10 0,-10Z"/><path d="M.9,-1.5 L8.5,3 L8,4.5 L.9,1.5Z"/><path d="M-.9,-1.5 L-8.5,3 L-8,4.5 L-.9,1.5Z"/><path d="M.9,6 L5,9.5 L4.5,10.5 L0,8.5 L-4.5,10.5 L-5,9.5 L-.9,6Z"/><path d="M0,5 L.5,5 L.6,10 L0,11.5 L-.6,10 L-.5,5Z"/><ellipse cx="-1.8" cy="5.5" rx=".7" ry="1.6"/><ellipse cx="1.8" cy="5.5" rx=".7" ry="1.6"/>`,
+  regional:`<path d="M0,-10 C1.2,-10 1.4,-7 1.4,-5 L1.4,5 L1,7 L.8,10 L0,11 L-.8,10 L-1,7 L-1.4,5 L-1.4,-5 C-1.4,-7 -1.2,-10 0,-10Z"/><rect x="-11" y="-2" width="22" height="2.2" rx=".5"/><rect x="-7" y="-5.5" width="2.5" height="5" rx=".6"/><rect x="4.5" y="-5.5" width="2.5" height="5" rx=".6"/><path d="M-.5,7 L.5,7 L.6,11 L0,12.5 L-.6,11Z"/><line x1="-4" y1="12" x2="4" y2="12" stroke-width="1.5" stroke-linecap="round"/>`,
+  ga:`<path d="M0,-11 C1.6,-11 2,-9 2,-7 L2,-3 L12.5,-3.5 L12,-1 L2,-1 L1.5,5 L1,7 L5.5,8 L5,10 L.8,8.5 L.5,10.5 L0,11.5 L-.5,10.5 L-.8,8.5 L-5,10 L-5.5,8 L-1,7 L-1.5,5 L-2,-1 L-12,-1 L-12.5,-3.5 L-2,-3 C-2,-9 -1.6,-11 0,-11Z"/>`,
+  military:`<path d="M0,-13 C2,-11.5 2.8,-8 2.8,-5 L3.2,-3 L12,4.5 L11.5,7 L3,2 L3,5.5 L6.5,8.5 L6,10.5 L2,8 L1.5,10.5 L0,11 L-1.5,10.5 L-2,8 L-6,10.5 L-6.5,8.5 L-3,5.5 L-3,2 L-11.5,7 L-12,4.5 L-3.2,-3 C-2.8,-8 -2,-11.5 0,-13Z"/>`,
+  helicopter:`<path d="M0,-3.5 C2.5,-3.5 3,0 3,2 C3,4.5 1.5,5.5 0,5.5 C-1.5,5.5 -3,4.5 -3,2 C-3,0 -2.5,-3.5 0,-3.5Z"/><line x1="0" y1="5.5" x2="0" y2="11" stroke-width="1.8" stroke-linecap="round"/><line x1="-3.5" y1="5" x2="-3.5" y2="6.5" stroke-width=".6" opacity=".5"/><line x1="3.5" y1="5" x2="3.5" y2="6.5" stroke-width=".6" opacity=".5"/><line x1="-4.5" y1="6.5" x2="-2.5" y2="6.5" stroke-width=".6" opacity=".5"/><line x1="2.5" y1="6.5" x2="4.5" y2="6.5" stroke-width=".6" opacity=".5"/><line x1="-11" y1="-2" x2="11" y2="-2" stroke-width="1.2" stroke-linecap="round" opacity=".8"/><line x1="0" y1="-13" x2="0" y2="9" stroke-width="1.2" stroke-linecap="round" opacity=".8" transform="rotate(90,0,-2)"/><circle cx="0" cy="-2" r="1.2"/>`,
+};
 
-      STATE.mapReady = true;
-
-      // Initialize sources and layers
-      initSources();
-      initLayers();
-      initControls();
-
-      // Start data polling
-      fetchVATSIMData();
-      setInterval(fetchVATSIMData, CONFIG.POLL_INTERVAL);
-
-      // Hide loader
-      const hideLoader = () => {
-        const loader = document.getElementById('loader');
-        if (!loader || loader.dataset.hidden) return;
-        loader.dataset.hidden = '1';
-        loader.classList.add('fade');
-        setTimeout(() => { loader.style.display = 'none'; }, 1200);
+// Register SVG airplane icons with the MapLibre map
+async function registerAcIcons(mapRef){
+  const sz=48;
+  const promises=[];
+  for(const [cat, color] of Object.entries(CAT_COLORS)){
+    const paths=AC_SHAPES[cat]||AC_SHAPES.medium;
+    const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}" viewBox="-14 -14 28 28"><g fill="${color}" stroke="${color}">${paths}</g></svg>`;
+    promises.push(new Promise((resolve,reject)=>{
+      const img=new Image(sz,sz);
+      img.onload=()=>{
+        if(!mapRef.hasImage('ac-'+cat)) mapRef.addImage('ac-'+cat, img);
+        resolve();
       };
-      STATE.map.once('idle', hideLoader);
-      setTimeout(hideLoader, 3000);
-
-    } catch (error) {
-      console.error('Map initialization error:', error);
-      // Fallback: try without globe projection
-      try {
-        STATE.map = new maplibregl.Map({
-          container: 'map',
-          style: CONFIG.STYLE_URL,
-          center: [0, 20],
-          zoom: 2,
-          pitch: 30
-        });
-        STATE.map.once('style.load', () => {
-          STATE.mapReady = true;
-          initSources();
-          initLayers();
-          initControls();
-          fetchVATSIMData();
-          setInterval(fetchVATSIMData, CONFIG.POLL_INTERVAL);
-          document.getElementById('loader').classList.add('fade');
-        });
-      } catch(e2) { console.error('Fallback also failed:', e2); }
-    }
-  }
-
-  //
-  // DATA SOURCES
-  //
-  function initSources() {
-    if (!STATE.map || !STATE.mapReady) return;
-
-    // Altitude-based pilot sources
-    const altBands = [
-      { id: 'pilots-ground', min: 0, max: 1000 },
-      { id: 'pilots-low', min: 1000, max: 10000 },
-      { id: 'pilots-mid', min: 10000, max: 25000 },
-      { id: 'pilots-high', min: 25000, max: 35000 },
-      { id: 'pilots-upper', min: 35000, max: Infinity }
-    ];
-
-    altBands.forEach(band => {
-      if (!STATE.map.getSource(band.id)) {
-        STATE.map.addSource(band.id, {
-          type: 'geojson',
-          data: { type: 'FeatureCollection', features: [] }
-        });
-      }
-    });
-
-    // Controllers source
-    if (!STATE.map.getSource('controllers')) {
-      STATE.map.addSource('controllers', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] }
-      });
-    }
-
-    // Routes source
-    if (!STATE.map.getSource('routes')) {
-      STATE.map.addSource('routes', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] }
-      });
-    }
-
-    // Weather source
-    if (!STATE.map.getSource('weather')) {
-      STATE.map.addSource('weather', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] }
-      });
-    }
-  }
-
-  //
-  // LAYER INITIALIZATION
-  //
-  function initLayers() {
-    if (!STATE.map || !STATE.mapReady) return;
-
-    // Remove existing layers
-    const layerIds = [
-      'pilots-ground-layer', 'pilots-low-layer', 'pilots-mid-layer',
-      'pilots-high-layer', 'pilots-upper-layer',
-      'controllers-layer', 'routes-layer', 'weather-layer'
-    ];
-
-    layerIds.forEach(id => {
-      if (STATE.map.getLayer(id)) STATE.map.removeLayer(id);
-    });
-
-    // Ground (0-1k ft)
-    STATE.map.addLayer({
-      id: 'pilots-ground-layer',
-      type: 'circle',
-      source: 'pilots-ground',
-      paint: {
-        'circle-radius': 3,
-        'circle-color': '#d1d5db',
-        'circle-opacity': 0.7,
-        'circle-blur': 0.4
-      }
-    });
-
-    // Low (1-10k ft)
-    STATE.map.addLayer({
-      id: 'pilots-low-layer',
-      type: 'circle',
-      source: 'pilots-low',
-      paint: {
-        'circle-radius': 5,
-        'circle-color': '#06b6d4',
-        'circle-opacity': 0.75,
-        'circle-blur': 0.6
-      }
-    });
-
-    // Mid (10-25k ft)
-    STATE.map.addLayer({
-      id: 'pilots-mid-layer',
-      type: 'circle',
-      source: 'pilots-mid',
-      paint: {
-        'circle-radius': 7,
-        'circle-color': '#3b82f6',
-        'circle-opacity': 0.8,
-        'circle-blur': 0.8
-      }
-    });
-
-    // High (25-35k ft)
-    STATE.map.addLayer({
-      id: 'pilots-high-layer',
-      type: 'circle',
-      source: 'pilots-high',
-      paint: {
-        'circle-radius': 8,
-        'circle-color': '#22d3ee',
-        'circle-opacity': 0.85,
-        'circle-blur': 1,
-        'circle-stroke-width': 1.5,
-        'circle-stroke-color': 'rgba(34, 211, 238, 0.5)'
-      }
-    });
-
-    // Upper (35k+ ft)
-    STATE.map.addLayer({
-      id: 'pilots-upper-layer',
-      type: 'circle',
-      source: 'pilots-upper',
-      paint: {
-        'circle-radius': 10,
-        'circle-color': '#fbbf24',
-        'circle-opacity': 0.9,
-        'circle-blur': 1.5,
-        'circle-stroke-width': 2,
-        'circle-stroke-color': 'rgba(251, 191, 36, 0.6)'
-      }
-    });
-
-    // Controllers layer
-    STATE.map.addLayer({
-      id: 'controllers-layer',
-      type: 'circle',
-      source: 'controllers',
-      paint: {
-        'circle-radius': 6,
-        'circle-color': '#34d399',
-        'circle-opacity': 0.8,
-        'circle-stroke-width': 2,
-        'circle-stroke-color': 'rgba(52, 211, 153, 0.4)',
-        'circle-blur': 0.4
-      }
-    });
-
-    // Routes layer
-    STATE.map.addLayer({
-      id: 'routes-layer',
-      type: 'line',
-      source: 'routes',
-      paint: {
-        'line-color': 'rgba(34, 211, 238, 0.3)',
-        'line-width': 1,
-        'line-dasharray': [2, 2]
-      }
-    });
-
-    // Weather layer
-    STATE.map.addLayer({
-      id: 'weather-layer',
-      type: 'circle',
-      source: 'weather',
-      paint: {
-        'circle-radius': 8,
-        'circle-color': '#f87171',
-        'circle-opacity': 0.6,
-        'circle-blur': 1
-      }
-    });
-
-    // Click handlers
-    ['pilots-ground-layer', 'pilots-low-layer', 'pilots-mid-layer', 'pilots-high-layer', 'pilots-upper-layer'].forEach(id => {
-      STATE.map.on('click', id, (e) => {
-        if (e.features.length > 0) selectPilot(e.features[0]);
-      });
-      STATE.map.on('mouseenter', id, () => { STATE.map.getCanvas().style.cursor = 'pointer'; });
-      STATE.map.on('mouseleave', id, () => { STATE.map.getCanvas().style.cursor = ''; });
-    });
-
-    STATE.map.on('click', 'controllers-layer', (e) => {
-      if (e.features.length > 0) {
-        const ctrl = e.features[0].properties;
-        showDrawer(`${ctrl.callsign}`, `Frequency: ${ctrl.frequency}<br>Type: ATC`);
-      }
-    });
-
-    STATE.map.on('mouseenter', 'controllers-layer', () => { STATE.map.getCanvas().style.cursor = 'pointer'; });
-    STATE.map.on('mouseleave', 'controllers-layer', () => { STATE.map.getCanvas().style.cursor = ''; });
-  }
-
-  //
-  // VATSIM DATA FETCHING
-  //
-  async function fetchVATSIMData() {
-    try {
-      const url = CONFIG.CORS_PROXY + encodeURIComponent(CONFIG.VATSIM_URL);
-      const response = await fetch(url);
-      const data = await response.json();
-
-      STATE.pilots = data.pilots || [];
-      STATE.controllers = data.controllers || [];
-      STATE.lastUpdate = new Date();
-
-      // Update UI (guard against missing elements)
-      const nPilots = document.getElementById('nPilots');
-      const nATC = document.getElementById('nATC');
-      const updateTime = document.getElementById('updateTime');
-      if (nPilots) nPilots.textContent = STATE.pilots.length;
-      if (nATC) nATC.textContent = STATE.controllers.length;
-      if (updateTime) updateTime.textContent = STATE.lastUpdate.toLocaleTimeString();
-
-      // Render data
-      renderPilots();
-      renderControllers();
-      updateTrafficList();
-      updateStats();
-
-    } catch (error) {
-      console.error('VATSIM fetch error:', error);
-      const upd = document.querySelector('.upd');
-      if (upd) { upd.classList.remove('ok'); upd.classList.add('stale'); }
-    }
-  }
-
-  //
-  // RENDER PILOTS BY ALTITUDE
-  //
-  function renderPilots() {
-    if (!STATE.map || !STATE.mapReady) return;
-
-    const altBands = {
-      'pilots-ground': { min: 0, max: 1000 },
-      'pilots-low': { min: 1000, max: 10000 },
-      'pilots-mid': { min: 10000, max: 25000 },
-      'pilots-high': { min: 25000, max: 35000 },
-      'pilots-upper': { min: 35000, max: Infinity }
-    };
-
-    // Clear all sources
-    Object.keys(altBands).forEach(sourceId => {
-      const source = STATE.map.getSource(sourceId);
-      if (source) source.setData({ type: 'FeatureCollection', features: [] });
-    });
-
-    // Sort pilots into altitude bands
-    const bandedPilots = {};
-    Object.keys(altBands).forEach(key => bandedPilots[key] = []);
-
-    STATE.pilots.forEach(pilot => {
-      const alt = pilot.altitude || 0;
-      for (const [bandId, band] of Object.entries(altBands)) {
-        if (alt >= band.min && alt < band.max) {
-          bandedPilots[bandId].push(pilot);
-          break;
-        }
-      }
-    });
-
-    // Update sources with banded pilots
-    Object.entries(bandedPilots).forEach(([bandId, pilots]) => {
-      const features = pilots.map(pilot => ({
-        type: 'Feature',
-        properties: {
-          callsign: pilot.callsign,
-          altitude: pilot.altitude,
-          groundspeed: pilot.groundspeed,
-          heading: pilot.heading,
-          latitude: pilot.latitude,
-          longitude: pilot.longitude,
-          departure: pilot.flight_plan?.departure || 'N/A',
-          arrival: pilot.flight_plan?.arrival || 'N/A',
-          aircraft: pilot.flight_plan?.aircraft_short || 'N/A',
-          remarks: pilot.flight_plan?.remarks || ''
-        },
-        geometry: {
-          type: 'Point',
-          coordinates: [pilot.longitude, pilot.latitude]
-        }
-      }));
-
-      const source = STATE.map.getSource(bandId);
-      if (source) source.setData({ type: 'FeatureCollection', features });
-    });
-  }
-
-  //
-  // RENDER CONTROLLERS
-  //
-  function renderControllers() {
-    if (!STATE.map || !STATE.mapReady) return;
-
-    const features = STATE.controllers.map(ctrl => ({
-      type: 'Feature',
-      properties: {
-        callsign: ctrl.callsign,
-        frequency: ctrl.frequency,
-        atis_code: ctrl.atis_code || 'N/A'
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: [ctrl.longitude, ctrl.latitude]
-      }
+      img.onerror=reject;
+      img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
     }));
+  }
+  await Promise.all(promises);
+}
 
-    const source = STATE.map.getSource('controllers');
-    if (source) source.setData({ type: 'FeatureCollection', features });
+function getAltBand(alt){
+  const a=parseInt(alt)||0;
+  if(a<1000) return 'ground';
+  if(a<10000) return 'low';
+  if(a<25000) return 'mid';
+  if(a<35000) return 'high';
+  return 'upper';
+}
+
+// ============================================================================
+// INTERPOLATION ENGINE
+// ============================================================================
+const _interp = {
+  curr: new Map(),
+  update(pilots, ts){
+    this.curr.clear();
+    for(const p of pilots){
+      if(!p.latitude || !p.longitude) continue;
+      this.curr.set(p.callsign, {
+        lat:p.latitude, lon:p.longitude,
+        hdg:p.heading||0, gs:p.groundspeed||0,
+        alt:p.altitude||0, ts
+      });
+    }
+  },
+  getPosition(callsign, now){
+    const c = this.curr.get(callsign);
+    if(!c) return null;
+    if(c.gs < 10) return {lat:c.lat, lon:c.lon};
+    const elapsed = (now - c.ts) / 1000;
+    if(elapsed <= 0 || elapsed > 120) return {lat:c.lat, lon:c.lon};
+    const nmPerSec = c.gs / 3600;
+    const distNm = nmPerSec * elapsed;
+    const hdgRad = c.hdg * Math.PI / 180;
+    const dLat = (distNm/60) * Math.cos(hdgRad);
+    const dLon = (distNm/60) * Math.sin(hdgRad) / Math.cos(c.lat * Math.PI/180);
+    return {lat:c.lat+dLat, lon:c.lon+dLon};
+  }
+};
+
+// ============================================================================
+// STATE
+// ============================================================================
+let map = null;
+let pilots = [];
+let controllers = [];
+let prefiles = [];
+let batchData = null;
+let selectedPilot = null;
+let isDayMode = false;
+let networkFilter = 'all';
+let pollTimer = null;
+let isIdle = false;
+let interpTimer = null;
+let lastFetchTs = 0;
+let sidePanelTab = 'pilots';
+const layers = {atc:true, routes:true, weather:false, vectors:false, fir:false, sigmet:false};
+let atisVoice = null;
+
+// ============================================================================
+// FETCH
+// ============================================================================
+
+async function fetchBatch(mode){
+  try{
+    const url = CFG.PROXY + (mode==='full' ? CFG.BATCH_FULL : CFG.BATCH_PRI);
+    const r = await fetch(url);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return await r.json();
+  }catch(e){
+    console.warn('Batch fail, trying fallback:', e);
+    return await fetchFallback();
+  }
+}
+
+async function fetchFallback(){
+  try{
+    const url = CFG.PROXY + '/?url=' + encodeURIComponent('https://data.vatsim.net/v3/vatsim-data.json');
+    const r = await fetch(url);
+    if(!r.ok) return {vatsim:null};
+    const vatsim = await r.json();
+    return {vatsim, transceivers:null, ivao:null, poscon:null, _mode:'fallback'};
+  }catch(e){
+    console.error('Fallback fail:', e);
+    return {vatsim:null};
+  }
+}
+
+// ============================================================================
+// DATA NORMALIZATION
+// ============================================================================
+
+function normalizeVATSIM(p){
+  return {
+    callsign: p.callsign||'',
+    latitude: p.latitude,
+    longitude: p.longitude,
+    altitude: p.altitude||0,
+    groundspeed: p.groundspeed||0,
+    heading: p.heading||0,
+    transponder: p.transponder||'',
+    departure: p.flight_plan?.departure||'',
+    arrival: p.flight_plan?.arrival||'',
+    aircraft: p.flight_plan?.aircraft_short||p.flight_plan?.aircraft||'',
+    route: p.flight_plan?.route||'',
+    remarks: p.flight_plan?.remarks||'',
+    cruise_tas: p.flight_plan?.cruise_tas||'',
+    flight_rules: p.flight_plan?.flight_rules||'',
+    name: p.name||'',
+    cid: p.cid||'',
+    logon_time: p.logon_time||'',
+    _network: 'VATSIM'
+  };
+}
+
+function normalizeIVAO(p){
+  const lt = p.lastTrack||{};
+  return {
+    callsign: p.callsign||'',
+    latitude: lt.latitude||p.latitude||0,
+    longitude: lt.longitude||p.longitude||0,
+    altitude: lt.altitude||p.altitude||0,
+    groundspeed: lt.groundSpeed||p.groundSpeed||0,
+    heading: lt.heading||p.heading||0,
+    transponder: lt.transponder||'',
+    departure: p.flightPlan?.departureId||'',
+    arrival: p.flightPlan?.arrivalId||'',
+    aircraft: p.flightPlan?.aircraftId||'',
+    route: p.flightPlan?.route||'',
+    remarks: p.flightPlan?.remarks||'',
+    cruise_tas: '',
+    flight_rules: p.flightPlan?.flightRules||'',
+    name: '', cid: p.id||'',
+    logon_time: p.createdAt||'',
+    _network: 'IVAO'
+  };
+}
+
+function normalizePOSCON(f){
+  return {
+    callsign: f.callsign||'',
+    latitude: f.lat||f.latitude||0,
+    longitude: f.lon||f.longitude||0,
+    altitude: f.alt||f.altitude||0,
+    groundspeed: f.gs||f.groundSpeed||0,
+    heading: f.hdg||f.heading||0,
+    transponder: '',
+    departure: f.dep||f.departure||'',
+    arrival: f.arr||f.arrival||'',
+    aircraft: f.aircraft||'',
+    route: f.route||'',
+    remarks: '', cruise_tas:'', flight_rules:'',
+    name:'', cid:'',
+    logon_time:'',
+    _network: 'POSCON'
+  };
+}
+
+function getAllPilots(batch){
+  let all = [];
+  if(batch.vatsim?.pilots) all.push(...batch.vatsim.pilots.map(normalizeVATSIM));
+  if(batch.ivao?.clients?.pilots) all.push(...batch.ivao.clients.pilots.map(normalizeIVAO));
+  if(batch.poscon?.flights) all.push(...batch.poscon.flights.map(normalizePOSCON));
+  else if(Array.isArray(batch.poscon)) all.push(...batch.poscon.map(normalizePOSCON));
+
+  const f = networkFilter?.toUpperCase();
+  if(f==='VATSIM') return all.filter(p=>p._network==='VATSIM');
+  if(f==='IVAO') return all.filter(p=>p._network==='IVAO');
+  if(f==='POSCON') return all.filter(p=>p._network==='POSCON');
+  return all;
+}
+
+function getAllControllers(batch){
+  const ctrls = [];
+  if(batch.vatsim?.controllers){
+    batch.vatsim.controllers.forEach(c=>{
+      if(c.frequency && c.frequency !== '199.998'){
+        ctrls.push({
+          callsign:c.callsign||'', frequency:c.frequency||'',
+          latitude:c.latitude||0, longitude:c.longitude||0,
+          facility:c.facility||0, rating:c.rating||0,
+          text_atis:c.text_atis||[], name:c.name||'',
+          logon_time:c.logon_time||'', _network:'VATSIM'
+        });
+      }
+    });
+  }
+  if(batch.vatsim?.atis){
+    batch.vatsim.atis.forEach(c=>{
+      ctrls.push({
+        callsign:c.callsign||'', frequency:c.frequency||'',
+        latitude:c.latitude||0, longitude:c.longitude||0,
+        facility:c.facility||0, text_atis:c.text_atis||[],
+        name:c.name||'', _network:'VATSIM', _isAtis:true
+      });
+    });
+  }
+  if(batch.ivao?.clients?.atcs){
+    batch.ivao.clients.atcs.forEach(a=>{
+      ctrls.push({
+        callsign:a.callsign||'', frequency:a.atcSession?.frequency||'',
+        latitude:a.lastTrack?.latitude||0, longitude:a.lastTrack?.longitude||0,
+        facility:0, text_atis:a.atis?.lines||[],
+        name:'', _network:'IVAO'
+      });
+    });
+  }
+  return ctrls;
+}
+
+// ============================================================================
+// MAP INIT
+// ============================================================================
+
+function initMap(){
+  const style = isDayMode ? CFG.STYLE_LIGHT : CFG.STYLE_DARK;
+  map = new maplibregl.Map({
+    container: 'map',
+    style,
+    center: [15, 25],
+    zoom: 1.5,
+    pitch: 30,
+    bearing: 0,
+    antialias: true
+  });
+
+  map.on('style.load', ()=>{
+    map.setProjection({type: 'globe'});
+  });
+  map.on('load', onMapLoad);
+  map.on('mousemove', e=>{
+    el('f-coords').textContent = `${e.lngLat.lat.toFixed(2)}, ${e.lngLat.lng.toFixed(2)}`;
+  });
+  map.on('zoom', ()=>{
+    el('f-zoom').textContent = map.getZoom().toFixed(1);
+  });
+
+  // Map controls
+  el('zoomIn').onclick = ()=> map.zoomIn();
+  el('zoomOut').onclick = ()=> map.zoomOut();
+  el('resetView').onclick = ()=> map.flyTo({center:[15,25],zoom:1.5,pitch:30,bearing:0,duration:1200});
+}
+
+async function onMapLoad(){
+  await registerAcIcons(map);
+  addSources();
+  addLayers();
+  setupClickHandlers();
+  doUpdate();
+  startPolling();
+  startInterpolation();
+  hideLoader();
+  checkFirstVisit();
+}
+
+function addSources(){
+  // Pilot altitude bands
+  ['ground','low','mid','high','upper'].forEach(band=>{
+    map.addSource('p-'+band, {type:'geojson', data:{type:'FeatureCollection',features:[]}});
+  });
+  // ATC positions
+  map.addSource('atc', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
+  // ATC range circles
+  map.addSource('atc-range', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
+  // Route lines (selected flight)
+  map.addSource('route-line', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
+  // Speed vectors
+  map.addSource('vectors', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
+}
+
+function addLayers(){
+  // Altitude band configs: higher bands = larger icons, more opacity, slight screen lift
+  const bandCfg = {
+    ground: { size:0.35, opacity:0.65, lift:0 },
+    low:    { size:0.50, opacity:0.75, lift:1 },
+    mid:    { size:0.65, opacity:0.85, lift:2 },
+    high:   { size:0.85, opacity:0.92, lift:4 },
+    upper:  { size:1.05, opacity:1.0,  lift:6 },
+  };
+
+  Object.entries(bandCfg).forEach(([band, cfg])=>{
+    map.addLayer({
+      id:'p-'+band, type:'symbol', source:'p-'+band,
+      layout:{
+        'icon-image': ['match', ['get','category'],
+          'heavy','ac-heavy', 'medium','ac-medium', 'lightjet','ac-lightjet',
+          'regional','ac-regional', 'ga','ac-ga', 'military','ac-military',
+          'helicopter','ac-helicopter', 'ac-medium'],
+        'icon-rotate': ['get','heading'],
+        'icon-size': ['interpolate',['linear'],['zoom'], 1,cfg.size, 4,cfg.size*1.4, 8,cfg.size*2.5],
+        'icon-rotation-alignment': 'map',
+        'icon-pitch-alignment': 'map',
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+      paint:{
+        'icon-opacity': cfg.opacity,
+        'icon-translate': [0, -cfg.lift],
+      }
+    });
+  });
+
+  // ATC range circles (fill)
+  map.addLayer({
+    id:'atc-range', type:'fill', source:'atc-range',
+    paint:{
+      'fill-color': '#34d399',
+      'fill-opacity': 0.06
+    }
+  });
+
+  // ATC range circles (outline)
+  map.addLayer({
+    id:'atc-range-line', type:'line', source:'atc-range',
+    paint:{
+      'line-color': '#34d399',
+      'line-opacity': 0.3,
+      'line-width': 1,
+      'line-dasharray': [3,2]
+    }
+  });
+
+  // ATC dots
+  map.addLayer({
+    id:'atc-dots', type:'circle', source:'atc',
+    paint:{
+      'circle-radius': 4,
+      'circle-color': '#34d399',
+      'circle-opacity': 0.7,
+      'circle-stroke-width': 1.5,
+      'circle-stroke-color': '#34d39966',
+      'circle-blur': 0.5
+    }
+  });
+
+  // Route line (selected flight)
+  map.addLayer({
+    id:'route-line', type:'line', source:'route-line',
+    paint:{
+      'line-color': '#22d3ee',
+      'line-width': 2,
+      'line-opacity': 0.6,
+      'line-dasharray': [4,3]
+    },
+    layout:{'line-cap':'round','line-join':'round'}
+  });
+
+  // Speed vectors
+  map.addLayer({
+    id:'vectors', type:'line', source:'vectors',
+    paint:{
+      'line-color': '#fbbf24',
+      'line-width': 1.5,
+      'line-opacity': 0.5
+    },
+    layout:{'visibility':'none'}
+  });
+}
+
+async function reAddLayersAfterStyleChange(){
+  // After setStyle, sources, layers and images are gone. Re-add them.
+  if(!map.getSource('p-ground')){
+    await registerAcIcons(map);
+    addSources();
+    addLayers();
+    // Re-render with current data
+    if(pilots.length) renderPilotBands(pilots);
+    if(controllers.length) renderATC(controllers);
+    applyLayerVisibility();
+  }
+}
+
+// ============================================================================
+// RENDERING
+// ============================================================================
+
+function renderPilotBands(pilotList){
+  const bands = {ground:[], low:[], mid:[], high:[], upper:[]};
+  const now = Date.now();
+
+  pilotList.forEach(p=>{
+    if(!p.latitude || !p.longitude) return;
+
+    // Use interpolated position if available
+    const pos = _interp.getPosition(p.callsign, now);
+    const lat = pos ? pos.lat : p.latitude;
+    const lon = pos ? pos.lon : p.longitude;
+    const band = getAltBand(p.altitude);
+
+    bands[band].push({
+      type:'Feature',
+      geometry:{type:'Point', coordinates:[lon, lat]},
+      properties:{
+        callsign: p.callsign,
+        altitude: p.altitude||0,
+        groundspeed: p.groundspeed||0,
+        heading: p.heading||0,
+        departure: p.departure||'',
+        arrival: p.arrival||'',
+        aircraft: p.aircraft||'',
+        network: p._network||'VATSIM',
+        category: acCategory(p.aircraft),
+        band
+      }
+    });
+  });
+
+  Object.entries(bands).forEach(([band, features])=>{
+    const src = map.getSource('p-'+band);
+    if(src) src.setData({type:'FeatureCollection', features});
+  });
+}
+
+function renderATC(ctrlList){
+  if(!layers.atc){
+    const s1 = map.getSource('atc');
+    const s2 = map.getSource('atc-range');
+    if(s1) s1.setData({type:'FeatureCollection',features:[]});
+    if(s2) s2.setData({type:'FeatureCollection',features:[]});
+    return;
   }
 
-  //
-  // TRAFFIC LIST
-  //
-  function updateTrafficList() {
-    const container = document.getElementById('trafficList');
-    const allTraffic = [
-      ...STATE.pilots.map(p => ({ type: 'pilot', data: p })),
-      ...STATE.controllers.map(c => ({ type: 'controller', data: c }))
-    ];
+  const dots = [];
+  const circles = [];
 
-    allTraffic.sort((a, b) => {
-      const callA = (a.data.callsign || '').toLowerCase();
-      const callB = (b.data.callsign || '').toLowerCase();
-      return callA.localeCompare(callB);
+  ctrlList.forEach(c=>{
+    if(!c.latitude || !c.longitude) return;
+    // ATC dot
+    dots.push({
+      type:'Feature',
+      geometry:{type:'Point', coordinates:[c.longitude, c.latitude]},
+      properties:{
+        callsign: c.callsign,
+        frequency: c.frequency||'',
+        facility: c.facility||0,
+        network: c._network||'VATSIM'
+      }
     });
 
-    if (allTraffic.length === 0) {
-      container.innerHTML = '<div style="text-align:center;color:var(--t3);padding:20px">No traffic</div>';
-      return;
+    // Range circle based on facility type
+    const radius = getATCRadius(c.callsign, c.facility);
+    if(radius > 0){
+      circles.push(createCircleFeature(c.longitude, c.latitude, radius, {callsign:c.callsign}));
     }
+  });
 
-    container.innerHTML = allTraffic.map(item => {
-      const { type, data } = item;
-      if (type === 'pilot') {
-        return `
-          <div class="traffic-item" onclick="selectPilotByCallsign('${data.callsign}')">
-            <span class="traffic-call">${data.callsign}</span>
-            <div class="traffic-info">${data.flight_plan?.departure || 'N/A'} → ${data.flight_plan?.arrival || 'N/A'}</div>
-            <div class="traffic-info">FL${Math.floor(data.altitude / 100)}</div>
-          </div>
-        `;
+  const src1 = map.getSource('atc');
+  const src2 = map.getSource('atc-range');
+  if(src1) src1.setData({type:'FeatureCollection', features:dots});
+  if(src2) src2.setData({type:'FeatureCollection', features:circles});
+}
+
+function getATCRadius(callsign, facility){
+  const cs = (callsign||'').toUpperCase();
+  if(cs.includes('_CTR') || cs.includes('_FSS') || facility >= 6) return 300;
+  if(cs.includes('_APP') || cs.includes('_DEP') || facility === 5) return 80;
+  if(cs.includes('_TWR') || facility === 4) return 30;
+  if(cs.includes('_GND') || cs.includes('_DEL') || facility <= 3) return 10;
+  return 50;
+}
+
+function createCircleFeature(lng, lat, radiusKm, props){
+  const coords = [];
+  const steps = 48;
+  for(let i=0; i<=steps; i++){
+    const angle = (i/steps) * 2 * Math.PI;
+    const dLat = (radiusKm/111.32) * Math.cos(angle);
+    const dLng = (radiusKm/111.32) * Math.sin(angle) / Math.cos(lat * Math.PI/180);
+    coords.push([lng+dLng, lat+dLat]);
+  }
+  return {type:'Feature', geometry:{type:'Polygon', coordinates:[coords]}, properties:props||{}};
+}
+
+function renderVectors(pilotList){
+  if(!layers.vectors){
+    const s = map.getSource('vectors');
+    if(s) s.setData({type:'FeatureCollection',features:[]});
+    if(map.getLayoutProperty) try{map.setLayoutProperty('vectors','visibility','none');}catch(e){}
+    return;
+  }
+  try{map.setLayoutProperty('vectors','visibility','visible');}catch(e){}
+
+  const features = [];
+  pilotList.forEach(p=>{
+    if(!p.latitude || !p.longitude || p.groundspeed < 50) return;
+    const hdgRad = (p.heading||0) * Math.PI / 180;
+    // Vector length proportional to speed (1 min of travel)
+    const distNm = (p.groundspeed / 60);
+    const dLat = (distNm/60) * Math.cos(hdgRad);
+    const dLon = (distNm/60) * Math.sin(hdgRad) / Math.cos(p.latitude * Math.PI/180);
+    features.push({
+      type:'Feature',
+      geometry:{type:'LineString', coordinates:[[p.longitude, p.latitude],[p.longitude+dLon, p.latitude+dLat]]},
+      properties:{callsign:p.callsign}
+    });
+  });
+  const s = map.getSource('vectors');
+  if(s) s.setData({type:'FeatureCollection', features});
+}
+
+// ============================================================================
+// CLICK HANDLERS
+// ============================================================================
+
+function setupClickHandlers(){
+  const pilotLayers = ['p-ground','p-low','p-mid','p-high','p-upper'];
+
+  // Change cursor on hover
+  pilotLayers.concat(['atc-dots']).forEach(layerId=>{
+    map.on('mouseenter', layerId, ()=>{ map.getCanvas().style.cursor='pointer'; });
+    map.on('mouseleave', layerId, ()=>{ map.getCanvas().style.cursor=''; });
+  });
+
+  // Click pilot
+  pilotLayers.forEach(layerId=>{
+    map.on('click', layerId, e=>{
+      if(!e.features || !e.features.length) return;
+      const props = e.features[0].properties;
+      const pilot = pilots.find(p=>p.callsign===props.callsign);
+      if(pilot) selectPilot(pilot);
+    });
+  });
+
+  // Click ATC
+  map.on('click', 'atc-dots', e=>{
+    if(!e.features || !e.features.length) return;
+    const props = e.features[0].properties;
+    const ctrl = controllers.find(c=>c.callsign===props.callsign);
+    if(ctrl) selectController(ctrl);
+  });
+}
+
+function selectPilot(pilot){
+  selectedPilot = pilot;
+  showInfoDrawer(pilot);
+  map.flyTo({center:[pilot.longitude, pilot.latitude], zoom:6, pitch:40, duration:1200});
+}
+
+function selectController(ctrl){
+  selectedPilot = null;
+  const d = el('infoDrawer');
+  d.classList.add('open');
+  el('id-callsign').textContent = ctrl.callsign + ' [ATC]';
+  setActiveTab('info');
+  el('id-body').innerHTML = `
+    <div class="id-grid">
+      <div class="id-row"><span class="id-lbl">Callsign</span><span class="id-val">${ctrl.callsign}</span></div>
+      <div class="id-row"><span class="id-lbl">Frequency</span><span class="id-val">${ctrl.frequency||'--'}</span></div>
+      <div class="id-row"><span class="id-lbl">Network</span><span class="id-val">${ctrl._network}</span></div>
+      <div class="id-row"><span class="id-lbl">Name</span><span class="id-val">${ctrl.name||'--'}</span></div>
+    </div>
+    ${ctrl.text_atis && ctrl.text_atis.length ? `
+      <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--bdr)">
+        <div class="id-lbl" style="margin-bottom:4px">ATIS</div>
+        <div style="color:var(--t2);font-size:10px;line-height:1.5;font-family:monospace">${ctrl.text_atis.join('<br>')}</div>
+        <button onclick="speakATIS('${ctrl.text_atis.join(' ').replace(/'/g,"\\'")}')" style="margin-top:6px;padding:4px 10px;background:var(--acc);color:var(--bg);border:none;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600">&#x1F50A; Read ATIS</button>
+      </div>
+    ` : ''}
+  `;
+  if(ctrl.latitude && ctrl.longitude){
+    map.flyTo({center:[ctrl.longitude, ctrl.latitude], zoom:8, duration:1200});
+  }
+}
+
+// ============================================================================
+// INFO DRAWER
+// ============================================================================
+
+function showInfoDrawer(pilot){
+  const d = el('infoDrawer');
+  d.classList.add('open');
+  el('id-callsign').textContent = pilot.callsign + (pilot.aircraft ? ' ['+pilot.aircraft+']' : '');
+  setActiveTab('info');
+  updateInfoContent('info', pilot);
+}
+
+function setActiveTab(tabName){
+  document.querySelectorAll('.id-tab').forEach(t=>{
+    t.classList.toggle('active', t.dataset.tab===tabName);
+  });
+}
+
+function updateInfoContent(tab, pilot){
+  const body = el('id-body');
+  if(tab==='info'){
+    body.innerHTML = `<div class="id-grid">
+      <div class="id-row"><span class="id-lbl">Callsign</span><span class="id-val">${pilot.callsign}</span></div>
+      <div class="id-row"><span class="id-lbl">Aircraft</span><span class="id-val">${pilot.aircraft||'--'}</span></div>
+      <div class="id-row"><span class="id-lbl">Altitude</span><span class="id-val">${pilot.altitude ? 'FL'+Math.floor(pilot.altitude/100).toString().padStart(3,'0') : '--'}</span></div>
+      <div class="id-row"><span class="id-lbl">Speed</span><span class="id-val">${pilot.groundspeed||0} kt</span></div>
+      <div class="id-row"><span class="id-lbl">Heading</span><span class="id-val">${Math.floor(pilot.heading||0)}&deg;</span></div>
+      <div class="id-row"><span class="id-lbl">Squawk</span><span class="id-val">${pilot.transponder||'--'}</span></div>
+      <div class="id-row"><span class="id-lbl">From</span><span class="id-val">${pilot.departure||'--'}</span></div>
+      <div class="id-row"><span class="id-lbl">To</span><span class="id-val">${pilot.arrival||'--'}</span></div>
+      <div class="id-row"><span class="id-lbl">Network</span><span class="id-val">${pilot._network}</span></div>
+      <div class="id-row"><span class="id-lbl">Pilot</span><span class="id-val">${pilot.name||'--'} ${pilot.cid?'('+pilot.cid+')':''}</span></div>
+      <div class="id-row"><span class="id-lbl">Rules</span><span class="id-val">${pilot.flight_rules||'--'}</span></div>
+      <div class="id-row"><span class="id-lbl">Alt Band</span><span class="id-val">${getAltBand(pilot.altitude).toUpperCase()}</span></div>
+    </div>`;
+  } else if(tab==='route'){
+    body.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:12px">
+        <span style="color:var(--acc);font-weight:700;font-family:monospace">${pilot.departure||'????'}</span>
+        <span style="flex:1;height:1px;background:var(--bdr);position:relative">
+          <span style="position:absolute;top:-3px;left:50%;transform:translateX(-50%);font-size:8px;color:var(--t3)">&#9992;</span>
+        </span>
+        <span style="color:var(--acc);font-weight:700;font-family:monospace">${pilot.arrival||'????'}</span>
+      </div>
+      <div class="id-lbl" style="margin-bottom:4px">Route</div>
+      <div style="color:var(--t2);font-size:10px;line-height:1.5;font-family:monospace;word-break:break-all">${pilot.route||'No route filed'}</div>
+      <div class="id-lbl" style="margin-top:8px;margin-bottom:4px">TAS</div>
+      <div style="color:var(--t1);font-size:11px;font-family:monospace">${pilot.cruise_tas||'--'} kt</div>
+    `;
+  } else if(tab==='remarks'){
+    body.innerHTML = `
+      <div class="id-lbl" style="margin-bottom:4px">Flight Plan Remarks</div>
+      <div style="color:var(--t2);font-size:10px;line-height:1.5;font-family:monospace;word-break:break-all">${pilot.remarks||'No remarks'}</div>
+      <div class="id-lbl" style="margin-top:10px;margin-bottom:4px">Logon Time</div>
+      <div style="color:var(--t1);font-size:10px;font-family:monospace">${pilot.logon_time ? new Date(pilot.logon_time).toLocaleString() : '--'}</div>
+    `;
+  } else if(tab==='atc'){
+    // Find nearby ATC
+    const nearby = controllers.filter(c=>{
+      if(!c.latitude || !c.longitude || !pilot.latitude || !pilot.longitude) return false;
+      const d = Math.sqrt(Math.pow(c.latitude-pilot.latitude,2)+Math.pow(c.longitude-pilot.longitude,2));
+      return d < 5; // rough ~5 degrees
+    }).slice(0,10);
+    body.innerHTML = nearby.length ? nearby.map(c=>`
+      <div style="padding:4px 0;border-bottom:1px solid var(--bdr);font-size:10px;font-family:monospace;cursor:pointer" onclick="selectController(controllers.find(x=>x.callsign==='${c.callsign}'))">
+        <span style="color:var(--grn);font-weight:600">${c.callsign}</span>
+        <span style="color:var(--t3);margin-left:8px">${c.frequency||''}</span>
+      </div>
+    `).join('') : '<div style="color:var(--t3);font-size:10px">No nearby ATC found</div>';
+  }
+}
+
+// ============================================================================
+// ATIS TEXT-TO-SPEECH
+// ============================================================================
+
+function speakATIS(text){
+  if(!text) return;
+  if(atisVoice) speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.9;
+  u.pitch = 0.95;
+  const voices = speechSynthesis.getVoices();
+  const enVoice = voices.find(v=>v.lang.startsWith('en'));
+  if(enVoice) u.voice = enVoice;
+  atisVoice = u;
+  u.onend = ()=>{ atisVoice=null; };
+  speechSynthesis.speak(u);
+}
+// Make available globally for onclick
+window.speakATIS = speakATIS;
+window.selectController = (c)=>{ if(c) selectController(c); };
+
+// ============================================================================
+// SIDE PANEL
+// ============================================================================
+
+function updateSidePanel(){
+  const body = el('sp-body');
+  if(sidePanelTab==='pilots'){
+    const sorted = [...pilots].sort((a,b)=>(a.callsign||'').localeCompare(b.callsign||''));
+    body.innerHTML = sorted.slice(0,200).map(p=>`
+      <div class="ti${selectedPilot?.callsign===p.callsign?' active':''}" data-cs="${p.callsign}">
+        <span class="ti-call">${p.callsign}</span>
+        <span class="ti-info">
+          <span>${p.departure||'--'}&rarr;${p.arrival||'--'}</span>
+          <span>FL${Math.floor((p.altitude||0)/100).toString().padStart(3,'0')}</span>
+          <span>${p.groundspeed||0}kt</span>
+        </span>
+      </div>
+    `).join('');
+  } else {
+    const sorted = [...controllers].sort((a,b)=>(a.callsign||'').localeCompare(b.callsign||''));
+    body.innerHTML = sorted.slice(0,200).map(c=>`
+      <div class="ti" data-cs="${c.callsign}" data-type="atc">
+        <span class="ti-call">${c.callsign}</span>
+        <span class="ti-info">
+          <span>${c.frequency||'--'}</span>
+          <span>${c._network}</span>
+        </span>
+      </div>
+    `).join('');
+  }
+
+  // Click handlers
+  body.querySelectorAll('.ti').forEach(item=>{
+    item.addEventListener('click', ()=>{
+      const cs = item.dataset.cs;
+      if(item.dataset.type==='atc'){
+        const ctrl = controllers.find(c=>c.callsign===cs);
+        if(ctrl) selectController(ctrl);
       } else {
-        return `
-          <div class="traffic-item" onclick="selectController('${data.callsign}')">
-            <span class="traffic-call">${data.callsign}</span>
-            <div class="traffic-info">${data.frequency}</div>
-            <div class="traffic-info">ATC Station</div>
-          </div>
-        `;
+        const pilot = pilots.find(p=>p.callsign===cs);
+        if(pilot) selectPilot(pilot);
       }
-    }).join('');
+    });
+  });
+}
+
+// ============================================================================
+// UPDATE CYCLE
+// ============================================================================
+
+async function doUpdate(mode){
+  try{
+    el('s-status').textContent = '...';
+    const batch = await fetchBatch(mode||'primary');
+    if(!batch || !batch.vatsim){ el('s-status').textContent = 'ERR'; el('f-status').textContent='Error'; return; }
+
+    batchData = batch;
+    pilots = getAllPilots(batch);
+    controllers = getAllControllers(batch);
+    prefiles = batch.vatsim?.prefiles || [];
+    lastFetchTs = Date.now();
+
+    // Feed interpolation
+    _interp.update(pilots, lastFetchTs);
+
+    // Render
+    renderPilotBands(pilots);
+    renderATC(controllers);
+    renderVectors(pilots);
+    updateStats();
+    updateSidePanel();
+
+    el('s-status').textContent = 'LIVE';
+    el('f-status').textContent = 'Connected';
+    el('f-time').textContent = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }catch(e){
+    console.error('Update error:', e);
+    el('s-status').textContent = 'ERR';
+    el('f-status').textContent = 'Error: '+e.message;
   }
+}
 
-  //
-  // PILOT SELECTION
-  //
-  function selectPilot(feature) {
-    const props = feature.properties;
-    STATE.selectedPilot = props.callsign;
+function updateStats(){
+  el('s-pilots').textContent = pilots.length.toLocaleString();
+  el('s-atc').textContent = controllers.length.toLocaleString();
+}
 
-    const infoHtml = `
-      <div><strong>Callsign:</strong> ${props.callsign}</div>
-      <div><strong>Aircraft:</strong> ${props.aircraft}</div>
-      <div><strong>Altitude:</strong> FL${Math.floor(props.altitude / 100)}</div>
-      <div><strong>Groundspeed:</strong> ${props.groundspeed} kts</div>
-      <div><strong>Heading:</strong> ${props.heading}°</div>
-    `;
+// ============================================================================
+// POLLING & INTERPOLATION
+// ============================================================================
 
-    const flightHtml = `
-      <div><strong>Departure:</strong> ${props.departure}</div>
-      <div><strong>Arrival:</strong> ${props.arrival}</div>
-      <div><strong>Route:</strong> ${props.remarks || 'N/A'}</div>
-      <div><strong>Position:</strong> ${props.latitude.toFixed(4)}, ${props.longitude.toFixed(4)}</div>
-    `;
+function startPolling(){
+  const tick = ()=>{
+    const hidden = document.hidden;
+    const interval = hidden ? 0 : (isIdle ? CFG.POLL_IDLE : CFG.POLL_ACTIVE);
+    if(interval > 0) doUpdate();
+    pollTimer = setTimeout(tick, interval || CFG.POLL_ACTIVE);
+  };
+  pollTimer = setTimeout(tick, CFG.POLL_ACTIVE);
 
-    showDrawer(props.callsign, infoHtml, flightHtml);
-    highlightTrafficItem(props.callsign);
-  }
-
-  function selectPilotByCallsign(callsign) {
-    const pilot = STATE.pilots.find(p => p.callsign === callsign);
-    if (pilot) {
-      STATE.map.flyTo({
-        center: [pilot.longitude, pilot.latitude],
-        zoom: 6,
-        duration: 1000
-      });
-      selectPilot({
-        properties: {
-          callsign: pilot.callsign,
-          altitude: pilot.altitude,
-          groundspeed: pilot.groundspeed,
-          heading: pilot.heading,
-          latitude: pilot.latitude,
-          longitude: pilot.longitude,
-          departure: pilot.flight_plan?.departure || 'N/A',
-          arrival: pilot.flight_plan?.arrival || 'N/A',
-          aircraft: pilot.flight_plan?.aircraft_short || 'N/A',
-          remarks: pilot.flight_plan?.remarks || ''
-        }
-      });
+  document.addEventListener('visibilitychange', ()=>{
+    if(!document.hidden && Date.now()-lastFetchTs > CFG.POLL_ACTIVE){
+      doUpdate();
     }
-  }
+  });
 
-  function selectController(callsign) {
-    const ctrl = STATE.controllers.find(c => c.callsign === callsign);
-    if (ctrl) {
-      STATE.map.flyTo({
-        center: [ctrl.longitude, ctrl.latitude],
-        zoom: 5,
-        duration: 1000
+  // Idle detection
+  let idleT;
+  const resetIdle = ()=>{ clearTimeout(idleT); isIdle=false; idleT=setTimeout(()=>{isIdle=true;},45000); };
+  document.addEventListener('mousemove', resetIdle);
+  document.addEventListener('keydown', resetIdle);
+  document.addEventListener('click', resetIdle);
+  document.addEventListener('touchstart', resetIdle);
+  resetIdle();
+}
+
+function startInterpolation(){
+  const ms = 1000 / CFG.INTERP_FPS;
+  interpTimer = setInterval(()=>{
+    if(!pilots.length || !map) return;
+    renderPilotBands(pilots);
+  }, ms);
+}
+
+// ============================================================================
+// THEME
+// ============================================================================
+
+function isLocalDaytime(){
+  const d = new Date(), mins = d.getHours()*60 + d.getMinutes();
+  return mins >= 390 && mins < 1110; // 6:30 AM to 6:30 PM
+}
+
+function initTheme(){
+  try{
+    const saved = localStorage.getItem('vf3d_theme');
+    if(saved==='day') isDayMode = true;
+    else if(saved==='night') isDayMode = false;
+    else isDayMode = isLocalDaytime();
+  }catch(e){ isDayMode = isLocalDaytime(); }
+  if(isDayMode) document.body.classList.add('day-mode');
+  el('theme-btn').textContent = isDayMode ? '\u2600\uFE0F' : '\uD83C\uDF19';
+}
+
+function toggleTheme(){
+  isDayMode = !isDayMode;
+  document.body.classList.toggle('day-mode', isDayMode);
+  el('theme-btn').textContent = isDayMode ? '\u2600\uFE0F' : '\uD83C\uDF19';
+  try{ localStorage.setItem('vf3d_theme', isDayMode?'day':'night'); }catch(e){}
+
+  const style = isDayMode ? CFG.STYLE_LIGHT : CFG.STYLE_DARK;
+  map.setStyle(style);
+  map.once('style.load', ()=>{
+    map.setProjection({type: 'globe'});
+    reAddLayersAfterStyleChange();
+  });
+}
+
+// ============================================================================
+// SEARCH
+// ============================================================================
+
+function setupSearch(){
+  const input = el('searchInput');
+  const results = el('searchResults');
+
+  input.addEventListener('input', ()=>{
+    const q = input.value.toLowerCase().trim();
+    if(q.length < 2){ results.classList.remove('active'); return; }
+
+    const pilotMatches = pilots.filter(p=>
+      p.callsign.toLowerCase().includes(q) ||
+      p.departure.toLowerCase().includes(q) ||
+      p.arrival.toLowerCase().includes(q) ||
+      (p.aircraft||'').toLowerCase().includes(q)
+    ).slice(0,8).map(p=>({type:'pilot', label:`${p.callsign} - ${p.departure||'--'} to ${p.arrival||'--'}`, data:p}));
+
+    const atcMatches = controllers.filter(c=>
+      c.callsign.toLowerCase().includes(q) ||
+      (c.frequency||'').includes(q)
+    ).slice(0,5).map(c=>({type:'atc', label:`${c.callsign} (${c.frequency||'--'})`, data:c}));
+
+    const all = [...pilotMatches, ...atcMatches];
+    if(!all.length){ results.classList.remove('active'); return; }
+
+    results.innerHTML = all.map((m,i)=>`
+      <div class="sr-item" data-idx="${i}">
+        <span style="color:${m.type==='atc'?'var(--grn)':'var(--acc)'};font-weight:600;font-family:monospace">${m.type==='atc'?'[ATC] ':''}</span>${m.label}
+      </div>
+    `).join('');
+    results.classList.add('active');
+
+    results.querySelectorAll('.sr-item').forEach((item,i)=>{
+      item.addEventListener('mousedown', (e)=>{
+        e.preventDefault(); // Prevent blur from closing dropdown
+        const match = all[i];
+        if(match.type==='pilot') selectPilot(match.data);
+        else selectController(match.data);
+        input.value = '';
+        results.classList.remove('active');
       });
+    });
+  });
+
+  document.addEventListener('click', e=>{
+    if(!e.target.closest('.search-wrap')) results.classList.remove('active');
+  });
+}
+
+// ============================================================================
+// EVENT HANDLERS
+// ============================================================================
+
+function setupEvents(){
+  // Network filter
+  el('net-btn').addEventListener('click', ()=> el('net-menu').classList.toggle('open'));
+  document.querySelectorAll('#net-menu .dd-item').forEach(item=>{
+    item.addEventListener('click', ()=>{
+      networkFilter = item.dataset.net;
+      el('net-btn').textContent = item.dataset.net.toUpperCase();
+      document.querySelectorAll('#net-menu .dd-item').forEach(i=>i.classList.remove('active'));
+      item.classList.add('active');
+      el('net-menu').classList.remove('open');
+      // Re-render with filter
+      if(batchData){
+        pilots = getAllPilots(batchData);
+        controllers = getAllControllers(batchData);
+        renderPilotBands(pilots);
+        renderATC(controllers);
+        renderVectors(pilots);
+        updateStats();
+        updateSidePanel();
+      }
+    });
+  });
+
+  // Close dropdown on outside click
+  document.addEventListener('click', e=>{
+    if(!e.target.closest('.dd')) el('net-menu').classList.remove('open');
+  });
+
+  // Theme
+  el('theme-btn').addEventListener('click', toggleTheme);
+
+  // Traffic list
+  el('list-btn').addEventListener('click', ()=>{
+    el('sidePanel').classList.toggle('open');
+    updateSidePanel();
+  });
+  el('sp-close').addEventListener('click', ()=> el('sidePanel').classList.remove('open'));
+
+  // Side panel tabs
+  document.querySelectorAll('.sp-tab').forEach(tab=>{
+    tab.addEventListener('click', ()=>{
+      document.querySelectorAll('.sp-tab').forEach(t=>t.classList.remove('active'));
+      tab.classList.add('active');
+      sidePanelTab = tab.dataset.stab;
+      updateSidePanel();
+    });
+  });
+
+  // Info drawer tabs
+  document.querySelectorAll('.id-tab').forEach(tab=>{
+    tab.addEventListener('click', ()=>{
+      setActiveTab(tab.dataset.tab);
+      if(selectedPilot) updateInfoContent(tab.dataset.tab, selectedPilot);
+    });
+  });
+  el('id-close').addEventListener('click', ()=>{
+    el('infoDrawer').classList.remove('open');
+    selectedPilot = null;
+    // Clear route line
+    const s = map.getSource('route-line');
+    if(s) s.setData({type:'FeatureCollection',features:[]});
+  });
+
+  // Layer toggles
+  document.querySelectorAll('.layer-toggle').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const layer = btn.dataset.layer;
+      layers[layer] = !layers[layer];
+      btn.classList.toggle('active', layers[layer]);
+      applyLayerVisibility();
+      // Re-render affected layers
+      if(layer==='atc') renderATC(controllers);
+      if(layer==='vectors') renderVectors(pilots);
+    });
+  });
+
+  // Legend
+  el('legendBtn').addEventListener('click', ()=>{
+    el('legendPanel').classList.toggle('open');
+  });
+
+  // Welcome popup
+  el('popup-btn').addEventListener('click', ()=>{
+    el('overlay').classList.remove('show');
+    el('popup').classList.remove('show');
+    try{ localStorage.setItem('vf3d_visited','1'); }catch(e){}
+  });
+  el('overlay').addEventListener('click', ()=>{
+    el('overlay').classList.remove('show');
+    el('popup').classList.remove('show');
+    try{ localStorage.setItem('vf3d_visited','1'); }catch(e){}
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', e=>{
+    if(e.key==='Escape'){
+      el('infoDrawer').classList.remove('open');
+      el('sidePanel').classList.remove('open');
+      selectedPilot = null;
     }
-  }
+  });
+}
 
-  //
-  // UI FUNCTIONS
-  //
-  function showDrawer(title, infoHtml, flightHtml = '') {
-    document.getElementById('drawerTitle').textContent = title;
-    document.getElementById('tabInfo').innerHTML = infoHtml;
-    document.getElementById('tabFlight').innerHTML = flightHtml;
-    document.getElementById('infoDrawer').classList.add('open');
-  }
+function applyLayerVisibility(){
+  // ATC layers
+  const atcVis = layers.atc ? 'visible' : 'none';
+  try{
+    map.setLayoutProperty('atc-dots','visibility',atcVis);
+    map.setLayoutProperty('atc-range','visibility',atcVis);
+    map.setLayoutProperty('atc-range-line','visibility',atcVis);
+  }catch(e){}
 
-  function highlightTrafficItem(callsign) {
-    document.querySelectorAll('.traffic-item').forEach(el => el.classList.remove('active'));
-    const item = Array.from(document.querySelectorAll('.traffic-item')).find(el =>
-      el.textContent.includes(callsign)
-    );
-    if (item) item.classList.add('active');
-  }
+  // Vectors
+  try{ map.setLayoutProperty('vectors','visibility',layers.vectors?'visible':'none'); }catch(e){}
 
-  function updateStats() {
-    // Updates handled in fetchVATSIMData
-  }
+  // Route line
+  try{ map.setLayoutProperty('route-line','visibility',layers.routes?'visible':'none'); }catch(e){}
+}
 
-  //
-  // INITIALIZATION & CONTROLS
-  //
-  function initControls() {
-    // Layer toggles
-    document.getElementById('toggleAircraft').addEventListener('click', function() {
-      STATE.layerVisibility.aircraft = !STATE.layerVisibility.aircraft;
-      this.classList.toggle('active');
-      ['pilots-ground-layer', 'pilots-low-layer', 'pilots-mid-layer', 'pilots-high-layer', 'pilots-upper-layer'].forEach(id => {
-        if (STATE.map.getLayer(id)) {
-          STATE.map.setLayoutProperty(id, 'visibility', STATE.layerVisibility.aircraft ? 'visible' : 'none');
-        }
-      });
-    });
+// ============================================================================
+// HELPERS
+// ============================================================================
 
-    document.getElementById('toggleATC').addEventListener('click', function() {
-      STATE.layerVisibility.atc = !STATE.layerVisibility.atc;
-      this.classList.toggle('active');
-      if (STATE.map.getLayer('controllers-layer')) {
-        STATE.map.setLayoutProperty('controllers-layer', 'visibility', STATE.layerVisibility.atc ? 'visible' : 'none');
-      }
-    });
+function el(id){ return document.getElementById(id); }
 
-    document.getElementById('toggleRoutes').addEventListener('click', function() {
-      STATE.layerVisibility.routes = !STATE.layerVisibility.routes;
-      this.classList.toggle('active');
-      if (STATE.map.getLayer('routes-layer')) {
-        STATE.map.setLayoutProperty('routes-layer', 'visibility', STATE.layerVisibility.routes ? 'visible' : 'none');
-      }
-    });
+function hideLoader(){
+  const loader = el('loader');
+  setTimeout(()=>{
+    loader.classList.add('fade');
+    setTimeout(()=>loader.remove(), 600);
+  }, 400);
+}
 
-    document.getElementById('toggleWeather').addEventListener('click', function() {
-      STATE.layerVisibility.weather = !STATE.layerVisibility.weather;
-      this.classList.toggle('active');
-      if (STATE.map.getLayer('weather-layer')) {
-        STATE.map.setLayoutProperty('weather-layer', 'visibility', STATE.layerVisibility.weather ? 'visible' : 'none');
-      }
-    });
-
-    document.getElementById('toggleAltitude').addEventListener('click', function() {
-      document.getElementById('altitudePanel').classList.toggle('open');
-    });
-
-    // Altitude band checkboxes
-    document.querySelectorAll('.alt-band-checkbox').forEach(cb => {
-      cb.addEventListener('click', function() {
-        const band = this.getAttribute('data-alt');
-        STATE.altitudeBands[band] = !STATE.altitudeBands[band];
-        this.classList.toggle('checked');
-      });
-    });
-
-    // Panel toggles
-    document.getElementById('togglePanel').addEventListener('click', () => {
-      document.getElementById('sidePanel').classList.toggle('open');
-    });
-
-    document.getElementById('closeSidePanel').addEventListener('click', () => {
-      document.getElementById('sidePanel').classList.remove('open');
-    });
-
-    document.getElementById('closeDrawer').addEventListener('click', () => {
-      document.getElementById('infoDrawer').classList.remove('open');
-    });
-
-    // Drawer tabs
-    document.querySelectorAll('.drawer-tab').forEach(tab => {
-      tab.addEventListener('click', function() {
-        const tabName = this.getAttribute('data-tab');
-        document.querySelectorAll('.drawer-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
-        this.classList.add('active');
-        document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).style.display = 'block';
-      });
-    });
-
-    // Search
-    document.getElementById('searchInput').addEventListener('input', function() {
-      const query = this.value.toLowerCase();
-      if (!query) return;
-
-      const pilot = STATE.pilots.find(p => p.callsign.toLowerCase().includes(query));
-      if (pilot) {
-        selectPilotByCallsign(pilot.callsign);
-      }
-    });
-
-    // Map events
-    STATE.map.on('mousemove', (e) => {
-      const { lat, lng } = e.lngLat;
-      document.getElementById('coordDisplay').textContent = `${lat.toFixed(2)}°, ${lng.toFixed(2)}°`;
-    });
-
-    // Reset zoom
-    const resetBtn = document.createElement('button');
-    resetBtn.className = 'map-control-btn';
-    resetBtn.title = 'Reset view';
-    resetBtn.innerHTML = '⊙';
-    resetBtn.addEventListener('click', () => {
-      STATE.map.flyTo({ center: [0, 20], zoom: 2.5, pitch: 45, duration: 1000 });
-    });
-
-    // Zoom controls
-    const zoomInBtn = document.createElement('button');
-    zoomInBtn.className = 'map-control-btn';
-    zoomInBtn.title = 'Zoom in';
-    zoomInBtn.innerHTML = '+';
-    zoomInBtn.addEventListener('click', () => STATE.map.zoomIn());
-
-    const zoomOutBtn = document.createElement('button');
-    zoomOutBtn.className = 'map-control-btn';
-    zoomOutBtn.title = 'Zoom out';
-    zoomOutBtn.innerHTML = '−';
-    zoomOutBtn.addEventListener('click', () => STATE.map.zoomOut());
-
-    const legendBtn = document.createElement('button');
-    legendBtn.className = 'map-control-btn';
-    legendBtn.title = 'Toggle legend';
-    legendBtn.innerHTML = '≡';
-    legendBtn.addEventListener('click', () => {
-      document.getElementById('legend').classList.toggle('open');
-    });
-
-    let controlsDiv = document.querySelector('.map-controls');
-    if (!controlsDiv) {
-      controlsDiv = document.createElement('div');
-      controlsDiv.className = 'map-controls';
-      document.querySelector('.content').appendChild(controlsDiv);
+function checkFirstVisit(){
+  try{
+    if(!localStorage.getItem('vf3d_visited')){
+      el('overlay').classList.add('show');
+      el('popup').classList.add('show');
     }
-    controlsDiv.insertBefore(zoomInBtn, controlsDiv.firstChild);
-    controlsDiv.appendChild(zoomOutBtn);
-    controlsDiv.appendChild(resetBtn);
-    controlsDiv.appendChild(legendBtn);
-  }
+  }catch(e){}
+}
 
-  //
-  // START APP
-  //
-  window.addEventListener('DOMContentLoaded', initMap);
+// ============================================================================
+// INIT
+// ============================================================================
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  initTheme();
+  initMap();
+  setupSearch();
+  setupEvents();
+});
+
+})();
 </script>
-
 </body>
 </html>
