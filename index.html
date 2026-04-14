@@ -1,1419 +1,318 @@
 <!DOCTYPE html>
-<!-- Crafted by Pawan K Jajoo | 3D Globe powered by MapLibre GL JS -->
+<!-- Virtual Flights 3D Globe - Pushstart Sims -->
+<!-- Real-time VATSIM/IVAO/POSCON tracker on a Three.js globe -->
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Virtual Flights 3D Globe | Pushstart Simulators</title>
-  <meta name="description" content="Live 3D globe showing real-time traffic from VATSIM, IVAO and POSCON networks.">
-  <script src="https://unpkg.com/maplibre-gl@5.21.0/dist/maplibre-gl.js"></script>
-  <link href="https://unpkg.com/maplibre-gl@5.21.0/dist/maplibre-gl.css" rel="stylesheet" />
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    *{margin:0;padding:0;box-sizing:border-box}
-
-    :root{
-      --bg:#090d18;--bg2:#10162a;--bg3:#151d2eee;--bg3s:#151d2e;
-      --bdr:#1a2844;--acc:#22d3ee;--acc2:#22d3ee44;
-      --grn:#34d399;--grn2:#34d39944;--amb:#fbbf24;--red:#f87171;
-      --t1:#e2e8f0;--t2:#94a3b8;--t3:#475569;
-      --hdr-bg:#10162a;--hdr-bdr:#1a2844;--hdr-t1:#e2e8f0;--hdr-t2:#94a3b8;
-    }
-
-    /* Day mode: high-contrast text, but header/footer stay dark */
-    body.day-mode{
-      --bg:#f0f4f8;--bg2:#e2e8f0;--bg3:#ffffffee;--bg3s:#ffffff;
-      --bdr:#b0b8c4;--acc:#0891b2;--acc2:#0891b244;
-      --grn:#059669;--grn2:#06966944;--amb:#d97706;--red:#dc2626;
-      --t1:#000000;--t2:#1e293b;--t3:#334155;
-    }
-
-    html,body{width:100%;height:100%;overflow:hidden;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--t1)}
-    #map{width:100%;height:100%}
-
-    /* Header - always dark */
-    .header{
-      position:absolute;top:0;left:0;right:0;height:48px;z-index:100;
-      background:linear-gradient(to bottom,var(--hdr-bg),rgba(16,22,42,0.85));
-      border-bottom:1px solid var(--hdr-bdr);
-      display:flex;align-items:center;padding:0 16px;gap:16px;font-size:12px;
-      color:var(--hdr-t2);
-    }
-    .logo{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--acc);font-size:14px;flex-shrink:0;white-space:nowrap}
-    .logo-icon{width:22px;height:22px;border-radius:5px;background:linear-gradient(135deg,#22d3ee,#6366f1);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;font-family:monospace}
-    .stats{display:flex;gap:16px;flex:1;justify-content:center}
-    .stat{display:flex;align-items:center;gap:5px;white-space:nowrap;font-family:'SF Mono',SFMono-Regular,monospace;font-size:11px}
-    .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
-    .dot-p{background:#22d3ee;box-shadow:0 0 6px #22d3ee44}
-    .dot-a{background:#34d399;box-shadow:0 0 6px #34d39944}
-    .dot-live{background:#34d399;animation:pls 2s infinite}
-    @keyframes pls{0%,100%{opacity:1}50%{opacity:.3}}
-    .stat-lbl{color:var(--hdr-t2)}
-    .stat-val{color:var(--hdr-t1);font-weight:600}
-    .hdr-btn{padding:5px 10px;background:transparent;border:1px solid var(--hdr-bdr);border-radius:6px;color:var(--hdr-t2);cursor:pointer;font-size:11px;transition:all .2s;font-family:inherit}
-    .hdr-btn:hover{border-color:#22d3ee;color:#e2e8f0}
-
-    /* Search */
-    .search-wrap{position:absolute;top:56px;left:50%;transform:translateX(-50%);z-index:90;width:min(340px,88vw)}
-    .search-input{width:100%;padding:8px 12px 8px 32px;background:var(--bg3s);border:1px solid var(--bdr);border-radius:10px;color:var(--t1);font-size:12px;outline:none;font-family:monospace;backdrop-filter:blur(8px);transition:border-color .2s}
-    .search-input::placeholder{color:var(--t3)}
-    .search-input:focus{border-color:var(--acc)}
-    .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--t3);font-size:13px;pointer-events:none}
-    .search-results{position:absolute;top:100%;left:0;right:0;background:var(--bg3s);border:1px solid var(--bdr);border-top:none;border-radius:0 0 10px 10px;max-height:260px;overflow-y:auto;display:none;z-index:91}
-    .search-results.active{display:block}
-    .sr-item{padding:8px 12px;border-bottom:1px solid var(--bdr);cursor:pointer;font-size:11px;color:var(--t2);transition:background .15s}
-    .sr-item:hover{background:var(--bg2);color:var(--t1)}
-    .sr-item:last-child{border-bottom:none}
-
-    /* Footer - always dark */
-    .footer{
-      position:absolute;bottom:0;left:0;right:0;height:32px;z-index:100;
-      background:linear-gradient(to top,var(--hdr-bg),rgba(16,22,42,0.85));
-      border-top:1px solid var(--hdr-bdr);
-      display:flex;align-items:center;padding:0 16px;gap:24px;font-size:10px;
-      color:var(--hdr-t2);font-family:'SF Mono',SFMono-Regular,monospace;
-    }
-    .ft-item{display:flex;gap:5px;align-items:center}
-    .ft-lbl{color:var(--hdr-t2);text-transform:uppercase;letter-spacing:.5px;font-size:9px}
-    .ft-val{color:var(--hdr-t1)}
-
-    /* Layer toggles (right side) */
-    .layer-toggles{position:absolute;top:60px;right:14px;z-index:80;display:flex;flex-direction:column;gap:5px}
-    .layer-toggle{width:38px;height:34px;border-radius:10px;background:rgba(9,13,24,0.85);border:1px solid rgba(34,211,238,0.25);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-family:monospace;transition:all .18s;backdrop-filter:blur(6px);box-shadow:0 2px 8px rgba(0,0,0,0.4)}
-    .layer-toggle:hover{border-color:var(--acc);color:var(--t1)}
-    .layer-toggle.active{background:var(--acc);border-color:var(--acc);color:var(--bg);box-shadow:0 0 10px rgba(34,211,238,.35)}
-
-    /* Map controls (bottom right) */
-    .map-controls{position:absolute;bottom:44px;right:14px;z-index:80;display:flex;flex-direction:column;gap:5px}
-    .mc-btn{width:36px;height:36px;border-radius:10px;background:rgba(9,13,24,0.85);border:1px solid rgba(34,211,238,0.25);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;transition:all .18s;backdrop-filter:blur(6px);box-shadow:0 2px 8px rgba(0,0,0,0.4)}
-    .mc-btn:hover{background:var(--bg3);border-color:var(--acc);color:var(--t1)}
-
-    /* Legend (bottom left) */
-    .legend{position:absolute;bottom:44px;left:14px;z-index:80;background:var(--bg3s);border:1px solid var(--bdr);border-radius:10px;padding:10px 12px;backdrop-filter:blur(8px);font-size:10px;display:none;min-width:140px}
-    .legend.open{display:block}
-    .legend-title{font-weight:700;color:var(--acc);margin-bottom:6px;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
-    .legend-row{display:flex;align-items:center;gap:7px;margin-bottom:4px;color:var(--t2);font-size:10px}
-    .legend-row:last-child{margin-bottom:0}
-    .legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-    .legend-sq{width:8px;height:8px;border-radius:2px;flex-shrink:0}
-
-    /* Legend toggle button */
-    .legend-btn{position:absolute;bottom:44px;left:14px;z-index:79;width:36px;height:36px;border-radius:10px;background:var(--bg3s);border:1px solid var(--bdr);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-family:monospace;backdrop-filter:blur(6px);transition:all .18s}
-    .legend-btn:hover{border-color:var(--acc);color:var(--t1)}
-
-    /* Info Drawer */
-    .info-drawer{position:absolute;bottom:32px;left:0;right:0;z-index:85;background:var(--bg2);border-top:1px solid var(--bdr);max-height:40vh;overflow-y:auto;transform:translateY(100%);transition:transform .25s ease;backdrop-filter:blur(8px)}
-    .info-drawer.open{transform:translateY(0)}
-    .id-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--bdr)}
-    .id-title{font-weight:700;font-size:13px;color:var(--acc);font-family:monospace}
-    .id-close{background:none;border:none;color:var(--t2);cursor:pointer;font-size:16px;padding:2px 6px}
-    .id-close:hover{color:var(--t1)}
-    .id-tabs{display:flex;gap:6px;padding:6px 14px;border-bottom:1px solid var(--bdr)}
-    .id-tab{padding:4px 10px;border-radius:6px;background:transparent;color:var(--t3);border:1px solid transparent;cursor:pointer;font-size:10px;font-weight:600;text-transform:uppercase;font-family:monospace;transition:all .15s}
-    .id-tab:hover{color:var(--t2)}
-    .id-tab.active{background:var(--acc);color:var(--bg);border-color:var(--acc)}
-    .id-body{padding:10px 14px;font-size:11px}
-    .id-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px}
-    .id-row{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--bdr)}
-    .id-row:last-child{border-bottom:none}
-    .id-lbl{color:var(--t3);text-transform:uppercase;font-size:9px;font-weight:600;letter-spacing:.5px}
-    .id-val{color:var(--t1);font-family:monospace;text-align:right;font-size:11px}
-
-    /* Side Panel */
-    .side-panel{position:absolute;top:48px;right:0;width:min(320px,100vw);height:calc(100% - 80px);background:var(--bg2);border-left:1px solid var(--bdr);z-index:88;transform:translateX(100%);transition:transform .25s ease;display:flex;flex-direction:column;backdrop-filter:blur(8px)}
-    .side-panel.open{transform:translateX(0)}
-    .sp-header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--bdr)}
-    .sp-title{font-weight:700;font-size:11px;color:var(--t1);text-transform:uppercase;letter-spacing:.05em;font-family:monospace}
-    .sp-tabs{display:flex;gap:4px;padding:6px 12px;border-bottom:1px solid var(--bdr)}
-    .sp-tab{padding:4px 8px;border-radius:5px;background:transparent;color:var(--t3);border:none;cursor:pointer;font-size:10px;font-weight:600;font-family:monospace;transition:all .15s}
-    .sp-tab.active{background:var(--acc);color:var(--bg)}
-    .sp-close{background:none;border:none;color:var(--t2);cursor:pointer;font-size:16px;padding:2px 6px}
-    .sp-close:hover{color:var(--t1)}
-    .sp-body{flex:1;overflow-y:auto;padding:6px}
-    .ti{padding:7px 8px;margin-bottom:3px;background:var(--bg3s);border-radius:6px;border:1px solid var(--bdr);cursor:pointer;transition:all .15s;border-left:3px solid transparent;font-size:10px;font-family:monospace}
-    .ti:hover{background:var(--bg3);border-color:var(--acc)}
-    .ti.active{border-left-color:var(--acc);border-color:var(--acc)}
-    .ti-call{font-weight:700;color:var(--acc);display:block;margin-bottom:2px;font-size:11px}
-    .ti-info{color:var(--t3);font-size:9px;display:flex;gap:8px}
-
-    /* Welcome Popup */
-    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;backdrop-filter:blur(3px)}
-    .overlay.show{display:block}
-    .popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:201;background:var(--bg2);border:1px solid var(--bdr);border-radius:14px;padding:24px;max-width:380px;width:90vw;display:none}
-    .popup.show{display:block}
-    .popup-title{font-size:15px;font-weight:700;color:var(--acc);margin-bottom:10px}
-    .popup-text{font-size:11px;color:var(--t2);line-height:1.6;margin-bottom:6px}
-    .popup-btn{margin-top:14px;width:100%;padding:8px;border-radius:8px;background:var(--acc);color:var(--bg);border:none;cursor:pointer;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;transition:box-shadow .2s}
-    .popup-btn:hover{box-shadow:0 0 14px rgba(34,211,238,.35)}
-
-    /* Loading Screen */
-    .loader{position:fixed;inset:0;background:#090d18;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;transition:opacity .6s ease}
-    .loader.fade{opacity:0;pointer-events:none}
-    .loader-text{color:#94a3b8;font-size:13px;margin-bottom:16px}
-    .loader-bar{width:180px;height:2px;background:#1a2844;border-radius:1px;overflow:hidden}
-    .loader-fill{height:100%;background:linear-gradient(90deg,#22d3ee,#fbbf24);width:0%;animation:lbar 2s ease-in-out infinite}
-    @keyframes lbar{0%{width:0%}50%{width:100%}100%{width:0%}}
-
-    /* Network dropdown */
-    .dd{position:relative}
-    .dd-menu{position:absolute;top:100%;right:0;background:var(--hdr-bg);border:1px solid var(--hdr-bdr);border-radius:6px;min-width:140px;display:none;z-index:110;margin-top:4px}
-    .dd-menu.open{display:block}
-    .dd-item{padding:7px 12px;color:var(--hdr-t2);cursor:pointer;font-size:11px;transition:all .15s;border-bottom:1px solid var(--hdr-bdr)}
-    .dd-item:hover{background:rgba(34,211,238,.1);color:var(--hdr-t1)}
-    .dd-item:last-child{border-bottom:none}
-    .dd-item.active{color:#22d3ee}
-
-    /* Scrollbar */
-    ::-webkit-scrollbar{width:5px}
-    ::-webkit-scrollbar-track{background:var(--bg)}
-    ::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
-
-    /* Hide MapLibre controls */
-    .maplibregl-ctrl-group,.maplibregl-ctrl-logo,.maplibregl-ctrl-attrib{display:none!important}
-
-    @media(max-width:600px){
-      .stat-lbl{display:none}
-      .stats{gap:10px}
-      .header{padding:0 10px;gap:8px}
-      .footer{gap:12px;padding:0 10px}
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0a0f1e">
+<title>Virtual Flights 3D Globe - Pushstart Sims</title>
+<link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <div id="map"></div>
 
-  <!-- Header (always dark) -->
-  <div class="header">
+<!-- Loading screen while globe textures load -->
+<div id="loading" class="loading">
+  <div class="loading-inner">
+    <div class="plane-icon">
+      <svg viewBox="0 0 24 24" width="48" height="48"><path fill="currentColor" d="M20 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S9 2.67 9 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L12 19v-5.5l8 2.5z"/></svg>
+    </div>
+    <div class="loading-text" id="loadingText">Loading globe...</div>
+    <div class="loading-bar"><div class="loading-bar-fill" id="loadingBar"></div></div>
+  </div>
+</div>
+
+<!-- Header bar: logo, stats, theme toggle -->
+<header class="hdr" id="hdr">
+  <div class="hdr-left">
     <div class="logo">
-      <div class="logo-icon">3D</div>
-      Virtual Flights <span style="color:var(--hdr-t2);font-weight:400;font-size:11px;margin-left:2px">Globe</span>
+      <span class="logo-dot"></span>
+      <span class="logo-txt">Pushstart Sims</span>
     </div>
-    <div class="stats">
-      <div class="stat"><div class="dot dot-p"></div><span class="stat-lbl">Pilots </span><span class="stat-val" id="s-pilots">0</span></div>
-      <div class="stat"><div class="dot dot-a"></div><span class="stat-lbl">ATC </span><span class="stat-val" id="s-atc">0</span></div>
-      <div class="stat"><div class="dot dot-live"></div><span class="stat-lbl">Status </span><span class="stat-val" id="s-status">...</span></div>
+    <div class="hdr-stats" id="hdrStats">
+      <span class="stat"><span class="stat-dot stat-pilots"></span><span id="statPilots">0</span> pilots</span>
+      <span class="stat"><span class="stat-dot stat-atc"></span><span id="statAtc">0</span> atc</span>
+      <span class="stat stat-net" id="statNet"><span class="stat-dot stat-ok"></span>connecting</span>
     </div>
-    <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
-      <div class="dd">
-        <button class="hdr-btn" id="net-btn">ALL</button>
-        <div class="dd-menu" id="net-menu">
-          <div class="dd-item active" data-net="all">All Networks</div>
-          <div class="dd-item" data-net="vatsim">VATSIM</div>
-          <div class="dd-item" data-net="ivao">IVAO</div>
-          <div class="dd-item" data-net="poscon">POSCON</div>
-        </div>
+  </div>
+  <div class="hdr-right">
+    <button class="hdr-btn" id="btnSearch" title="Search (Ctrl+K)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    </button>
+    <button class="hdr-btn" id="btnPanel" title="Side panel">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
+    </button>
+    <button class="hdr-btn" id="btnSettings" title="Settings">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- Search overlay (ctrl+K or button) -->
+<div class="search-wrap" id="searchWrap">
+  <div class="search-box">
+    <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" id="searchInp" placeholder="Search callsign or airport..." autocomplete="off">
+    <button class="search-close" id="searchClose">esc</button>
+  </div>
+  <div class="search-results" id="searchResults"></div>
+</div>
+
+<!-- Layer toggle controls (left side stack) -->
+<div class="layers" id="layers">
+  <button class="layer-btn active" data-layer="atc" title="ATC zones">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+    <span>ATC</span>
+  </button>
+  <button class="layer-btn active" data-layer="routes" title="Flight routes">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+    <span>Routes</span>
+  </button>
+  <button class="layer-btn" data-layer="weather" title="Weather radar">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41M12 6a6 6 0 0 0 0 12 6 6 0 0 0 0-12z"/></svg>
+    <span>WX</span>
+  </button>
+  <button class="layer-btn" data-layer="navaids" title="Navaids">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15 8 22 9 17 14 18 21 12 18 6 21 7 14 2 9 9 8 12 2"/></svg>
+    <span>NAV</span>
+  </button>
+  <button class="layer-btn" data-layer="airways" title="Airways">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M7 6l-4 6 4 6M17 6l4 6-4 6"/></svg>
+    <span>AWY</span>
+  </button>
+  <button class="layer-btn" data-layer="fir" title="FIR/UIR">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    <span>FIR</span>
+  </button>
+</div>
+
+<!-- Main globe canvas -->
+<div class="globe-wrap" id="globeWrap">
+  <canvas id="globeCanvas"></canvas>
+  <div class="globe-hint" id="globeHint">drag to rotate · scroll to zoom</div>
+</div>
+
+<!-- Legend / Quick reference -->
+<div class="legend" id="legend">
+  <div class="legend-row">
+    <span class="legend-swatch" style="background:#38bdf8"></span>
+    <span>Heavy</span>
+  </div>
+  <div class="legend-row">
+    <span class="legend-swatch" style="background:#a78bfa"></span>
+    <span>Medium</span>
+  </div>
+  <div class="legend-row">
+    <span class="legend-swatch" style="background:#f472b6"></span>
+    <span>Light Jet</span>
+  </div>
+  <div class="legend-row">
+    <span class="legend-swatch" style="background:#94a3b8"></span>
+    <span>Regional</span>
+  </div>
+  <div class="legend-row">
+    <span class="legend-swatch" style="background:#fb923c"></span>
+    <span>GA</span>
+  </div>
+  <div class="legend-row">
+    <span class="legend-swatch" style="background:#e2e8f0"></span>
+    <span>Military</span>
+  </div>
+  <div class="legend-row">
+    <span class="legend-swatch" style="background:#64748b"></span>
+    <span>Helicopter</span>
+  </div>
+</div>
+
+<!-- Side panel (pilots / controllers list) -->
+<aside class="panel" id="panel">
+  <div class="panel-tabs">
+    <button class="panel-tab active" data-tab="pilots">Pilots <span class="tab-count" id="tabCountP">0</span></button>
+    <button class="panel-tab" data-tab="atc">Controllers <span class="tab-count" id="tabCountA">0</span></button>
+    <button class="panel-close" id="panelClose" title="Close">&times;</button>
+  </div>
+  <div class="panel-search">
+    <input type="text" id="panelFilter" placeholder="filter list...">
+  </div>
+  <div class="panel-body" id="panelBody"></div>
+</aside>
+
+<!-- Info drawer (flight/controller details) -->
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div class="drawer-title">
+      <span class="drawer-cs" id="drCs">-</span>
+      <span class="drawer-badge" id="drBadge"></span>
+      <span class="drawer-type" id="drType"></span>
+    </div>
+    <button class="drawer-close" id="drClose">&times;</button>
+  </div>
+  <div class="drawer-tabs" id="drTabs"></div>
+  <div class="drawer-body" id="drBody"></div>
+</div>
+
+<!-- Settings panel -->
+<div class="settings" id="settings">
+  <div class="settings-head">
+    <div class="settings-title">Settings</div>
+    <button class="settings-close" id="settingsClose">&times;</button>
+  </div>
+  <div class="settings-body">
+
+    <div class="setting-section">
+      <div class="setting-label">Globe texture</div>
+      <div class="setting-options" id="optTexture">
+        <button class="setting-opt active" data-val="topo">Realistic</button>
+        <button class="setting-opt" data-val="bluemarble">Blue Marble</button>
+        <button class="setting-opt" data-val="night">Night Lights</button>
+        <button class="setting-opt" data-val="dark">Dark</button>
       </div>
-      <button class="hdr-btn" id="theme-btn" title="Toggle day/night">&#x1F319;</button>
-      <button class="hdr-btn" id="list-btn" title="Traffic list">&#9776;</button>
     </div>
-  </div>
 
-  <!-- Footer (always dark) -->
-  <div class="footer">
-    <div class="ft-item"><span class="ft-lbl">Status</span><span class="ft-val" id="f-status">Connecting...</span></div>
-    <div class="ft-item"><span class="ft-lbl">Coords</span><span class="ft-val" id="f-coords">0.00, 0.00</span></div>
-    <div class="ft-item"><span class="ft-lbl">Zoom</span><span class="ft-val" id="f-zoom">1.0</span></div>
-    <div class="ft-item"><span class="ft-lbl">Updated</span><span class="ft-val" id="f-time">--:--</span></div>
-    <div style="flex:1"></div>
-    <div class="ft-item" style="color:var(--hdr-t2)">Pushstart Simulators</div>
-  </div>
-
-  <!-- Search -->
-  <div class="search-wrap">
-    <span class="search-icon">&#x1F50D;</span>
-    <input type="text" class="search-input" id="searchInput" placeholder="Search callsign, airport, frequency...">
-    <div class="search-results" id="searchResults"></div>
-  </div>
-
-  <!-- Layer Toggles -->
-  <div class="layer-toggles">
-    <button class="layer-toggle active" data-layer="atc" title="ATC coverage">ATC</button>
-    <button class="layer-toggle active" data-layer="routes" title="Flight routes">RTE</button>
-    <button class="layer-toggle" data-layer="weather" title="Weather">WX</button>
-    <button class="layer-toggle" data-layer="vectors" title="Speed vectors">VEC</button>
-    <button class="layer-toggle" data-layer="fir" title="FIR boundaries">FIR</button>
-    <button class="layer-toggle" data-layer="sigmet" title="SIGMETs">SIG</button>
-  </div>
-
-  <!-- Map Controls -->
-  <div class="map-controls">
-    <button class="mc-btn" id="zoomIn" title="Zoom in">+</button>
-    <button class="mc-btn" id="zoomOut" title="Zoom out">&minus;</button>
-    <button class="mc-btn" id="resetView" title="Reset view">&#x21BA;</button>
-    <button class="mc-btn" id="legendBtn" title="Legend" style="font-size:10px;font-weight:700;font-family:monospace">KEY</button>
-  </div>
-
-  <!-- Legend Panel -->
-  <div class="legend" id="legendPanel">
-    <div class="legend-title">Aircraft Type</div>
-    <div class="legend-row"><div class="legend-sq" style="background:#38bdf8"></div> Heavy (747, A380)</div>
-    <div class="legend-row"><div class="legend-sq" style="background:#a78bfa"></div> Narrow-body (A320, 737)</div>
-    <div class="legend-row"><div class="legend-sq" style="background:#f472b6"></div> Business Jet</div>
-    <div class="legend-row"><div class="legend-sq" style="background:#94a3b8"></div> Regional (CRJ, ATR)</div>
-    <div class="legend-row"><div class="legend-sq" style="background:#fb923c"></div> GA (Cessna, Piper)</div>
-    <div class="legend-row"><div class="legend-sq" style="background:#e2e8f0"></div> Military</div>
-    <div class="legend-row"><div class="legend-sq" style="background:#64748b"></div> Helicopter</div>
-    <div style="margin-top:8px" class="legend-title">Altitude (icon size)</div>
-    <div class="legend-row" style="font-size:9px;opacity:.7">&#9992; Small = low &nbsp; &#9992;&#9992; Large = high</div>
-    <div style="margin-top:8px" class="legend-title">ATC</div>
-    <div class="legend-row"><div class="legend-dot" style="background:#34d399"></div> Active Controller</div>
-  </div>
-
-  <!-- Info Drawer -->
-  <div class="info-drawer" id="infoDrawer">
-    <div class="id-header">
-      <span class="id-title" id="id-callsign">---</span>
-      <button class="id-close" id="id-close">&times;</button>
+    <div class="setting-section">
+      <div class="setting-label">Time of day</div>
+      <div class="setting-options" id="optTime">
+        <button class="setting-opt active" data-val="auto">Auto (sun-tracking)</button>
+        <button class="setting-opt" data-val="day">Day</button>
+        <button class="setting-opt" data-val="night">Night</button>
+        <button class="setting-opt" data-val="dusk">Dusk</button>
+      </div>
     </div>
-    <div class="id-tabs">
-      <button class="id-tab active" data-tab="info">Info</button>
-      <button class="id-tab" data-tab="route">Route</button>
-      <button class="id-tab" data-tab="remarks">Remarks</button>
-      <button class="id-tab" data-tab="atc">ATC</button>
+
+    <div class="setting-section">
+      <div class="setting-label">Networks</div>
+      <div class="setting-toggles">
+        <label class="tog"><input type="checkbox" id="togVatsim" checked><span>VATSIM</span></label>
+        <label class="tog"><input type="checkbox" id="togIvao" checked><span>IVAO</span></label>
+        <label class="tog"><input type="checkbox" id="togPoscon" checked><span>POSCON</span></label>
+      </div>
     </div>
-    <div class="id-body" id="id-body"></div>
-  </div>
 
-  <!-- Side Panel -->
-  <div class="side-panel" id="sidePanel">
-    <div class="sp-header">
-      <span class="sp-title">Traffic</span>
-      <button class="sp-close" id="sp-close">&times;</button>
+    <div class="setting-section">
+      <div class="setting-label">Aircraft filter</div>
+      <select id="acFilter" class="setting-select">
+        <option value="all">All aircraft</option>
+        <option value="heavy">Heavy only</option>
+        <option value="medium">Medium only</option>
+        <option value="lightjet">Light Jets</option>
+        <option value="regional">Regional</option>
+        <option value="ga">General Aviation</option>
+        <option value="heli">Helicopters</option>
+        <option value="military">Military</option>
+      </select>
     </div>
-    <div class="sp-tabs">
-      <button class="sp-tab active" data-stab="pilots">Pilots</button>
-      <button class="sp-tab" data-stab="atc">ATC</button>
+
+    <div class="setting-section">
+      <div class="setting-label">Show</div>
+      <div class="setting-toggles">
+        <label class="tog"><input type="checkbox" id="togAtmosphere" checked><span>Atmosphere glow</span></label>
+        <label class="tog"><input type="checkbox" id="togStars" checked><span>Stars</span></label>
+        <label class="tog"><input type="checkbox" id="togClouds"><span>Cloud layer</span></label>
+        <label class="tog"><input type="checkbox" id="togGrid"><span>Lat/lon grid</span></label>
+        <label class="tog"><input type="checkbox" id="togTerminator" checked><span>Day/night terminator</span></label>
+        <label class="tog"><input type="checkbox" id="togSpeedVectors" checked><span>Speed vectors</span></label>
+        <label class="tog"><input type="checkbox" id="togTrails"><span>Position trails</span></label>
+      </div>
     </div>
-    <div class="sp-body" id="sp-body"></div>
-  </div>
 
-  <!-- Welcome Popup -->
-  <div class="overlay" id="overlay"></div>
-  <div class="popup" id="popup">
-    <div class="popup-title">Welcome to Virtual Flights 3D Globe</div>
-    <div class="popup-text">Explore real-time flight data from VATSIM, IVAO, and POSCON on an interactive 3D globe.</div>
-    <div class="popup-text">Drag to rotate the globe. Click aircraft to view flight details. Use the layer toggles on the right to show ATC coverage, routes, weather, and more.</div>
-    <div class="popup-text" style="color:var(--acc)">Aircraft icons are colored by type (heavy, medium, GA, etc.) and sized by altitude — larger icons fly higher. Press KEY to see the full legend.</div>
-    <button class="popup-btn" id="popup-btn">Explore the Globe</button>
-  </div>
-
-  <!-- Loading Screen -->
-  <div class="loader" id="loader">
-    <div class="loader-text">Initializing Virtual Flights 3D Globe...</div>
-    <div class="loader-bar"><div class="loader-fill"></div></div>
-  </div>
-
-<script>
-(function(){
-'use strict';
-
-// ============================================================================
-// CONFIG
-// ============================================================================
-const CFG = {
-  PROXY: 'https://pss-cors-proxy.pushstartsims-com.workers.dev',
-  BATCH_PRI: '/batch?mode=primary',
-  BATCH_FULL: '/batch?mode=full',
-  POLL_ACTIVE: 30000,
-  POLL_IDLE: 60000,
-  INTERP_FPS: 30,
-  STYLE_DARK: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-  STYLE_LIGHT: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-};
-
-// ============================================================================
-// AIRCRAFT CLASSIFICATION
-// ============================================================================
-// Classify aircraft by ICAO type code — ported from flat map (regex-based)
-function acCategory(typeCode){
-  if(!typeCode) return 'medium';
-  const t=(typeCode+'').toUpperCase().replace(/[^A-Z0-9]/g,'');
-  if(/^(R22|R44|R66|B06|B47|B05|B06T|B07|B0[5-9]|B2[01][24]|B4[012][29]|EC[0-9]|EC[12][0-9]|EC[13][35]|EC[14]5|AS[0-9]|AS3[0-9]|A109|A119|A139|A149|A169|A189|AW[0-9]|AW1[0-9]|S55|S58|S61|S64|S70|S76|S92|UH1|UH60|AH6|AH64|CH47|CH53|MD5|MD6|MD90[0-9]|BK17|H269|H500|H60|BO10|KA[0-9]|KA2[26]|KA3[12]|MI[0-9]|MI[12][0-9]|MI[234][0-9]|SA3[1-6]|NH90|LAMA|PUMA|LYNX|GAZE|HUCO|CABR|FH11|EN28|G2CA|EXPL)/.test(t)) return 'helicopter';
-  if(/^(B74|B75|B76|B77|B78|B74F|A38|A34|A35|A33|B748|B744|B763|B764|B77[WL]|AN1|C5A|C17|IL9|MD1|MD9)/.test(t)) return 'heavy';
-  if(/^(C25[0-9AB]|C50|C51|C52|C55|C56|C68|C70|CL[36][0-9]|LJ[2-7][05]|LJ[0-9]|H25|HA4T|HDJT|E50P|E55P|EA50|SF50|PC24|PRM1|GALX|GL5T|GL7T|GLF[2-6]|GLEX|G[12][0-9][0-9]|G280|G[345][0-9][0-9]|FA[257][0-9X]|F2TH|F900|BE4[0-9]|MU30|ASTR)/.test(t)) return 'lightjet';
-  if(/^(AT[457]|DH[18C]|E1[07][05]|E[12][0-9][05]|CRJ|SF34|JS41|BE19|J3[12]|P180|DHC[68]|PC12|TBM|SR[23]|DA[34]|C17[23]|B350)/.test(t)) return 'regional';
-  if(/^(C1[5-9][02458]|C2[0-9]|C3[0-9]|PA[234]|BE[235]|B60|C17[0-3]|P28|C152|C172|C182|EA[0-9]|RV[0-9]|VANS|M20|AA[0-9]|DR[0-9]|DV20|TB[0-9]|COL[34]|VENT|PIPA|CIRR)/.test(t)) return 'ga';
-  if(/^(F[01][4-8]|F2[0-2]|MIG|SU[0-9]|B1|B2|B52|A10|F117|EF1|EURO|TXCAS|PC21|L39|L159|BAE1|JA37|AJS3)/.test(t)) return 'military';
-  return 'medium';
-}
-
-// Aircraft category color palette — matches flat map exactly
-const CAT_COLORS={
-  heavy:      '#38bdf8',   // SKY BLUE
-  medium:     '#a78bfa',   // SOFT VIOLET
-  lightjet:   '#f472b6',   // HOT PINK
-  regional:   '#94a3b8',   // SILVER GRAY
-  ga:         '#fb923c',   // ORANGE
-  military:   '#e2e8f0',   // BRIGHT WHITE
-  helicopter: '#64748b',   // DARK SLATE
-};
-
-const CAT_NAMES={
-  heavy:'Heavy (747, A380)',
-  medium:'Narrow-body (A320, 737)',
-  lightjet:'Business Jet (Citation, G-V)',
-  regional:'Regional (CRJ, ATR)',
-  ga:'General Aviation (C172, PA28)',
-  military:'Military (F-16, F/A-18)',
-  helicopter:'Helicopter',
-};
-
-// SVG silhouette paths per category — ported from flat map
-// All drawn in a -14,-14 28x28 viewBox, nose pointing UP (north)
-const AC_SHAPES={
-  heavy:`<path d="M0,-12 C2,-12 2.2,-8 2.2,-5 L2.2,2 L2.2,7 L0,9 L-2.2,7 L-2.2,2 L-2.2,-5 C-2.2,-8 -2,-12 0,-12Z"/><path d="M-1.8,-11 C-1.2,-12.5 1.2,-12.5 1.8,-11 L2.2,-8 L-2.2,-8Z" opacity=".85"/><path d="M2.2,0 L12,5 L11.5,6.8 L2.2,3Z"/><path d="M-2.2,0 L-12,5 L-11.5,6.8 L-2.2,3Z"/><path d="M2.2,7 L6,10.5 L5.5,12 L0,9.5 L-5.5,12 L-6,10.5 L-2.2,7Z"/><ellipse cx="-5.2" cy="1.8" rx=".9" ry="2"/><ellipse cx="5.2" cy="1.8" rx=".9" ry="2"/><ellipse cx="-9" cy="3.8" rx=".75" ry="1.7"/><ellipse cx="9" cy="3.8" rx=".75" ry="1.7"/>`,
-  medium:`<path d="M0,-11 C1.5,-11 1.6,-7 1.6,-4 L1.6,2 L1.6,7 L0,8.5 L-1.6,7 L-1.6,2 L-1.6,-4 C-1.6,-7 -1.5,-11 0,-11Z"/><path d="M1.6,-.5 L11,4.5 L10.8,6.2 Q8,5 1.6,2.5Z"/><path d="M-1.6,-.5 L-11,4.5 L-10.8,6.2 Q-8,5 -1.6,2.5Z"/><path d="M1.6,7 L5,10 L4.5,11.5 L0,9 L-4.5,11.5 L-5,10 L-1.6,7Z"/><path d="M-.5,5 L.5,5 L.8,10 L0,11 L-.8,10Z"/><ellipse cx="-5.8" cy="2.2" rx=".9" ry="2.2"/><ellipse cx="5.8" cy="2.2" rx=".9" ry="2.2"/>`,
-  lightjet:`<path d="M0,-10 C.8,-10 .9,-6 .9,-3.5 L.9,5 L.9,7 L0,8 L-.9,7 L-.9,5 L-.9,-3.5 C-.9,-6 -.8,-10 0,-10Z"/><path d="M.9,-1.5 L8.5,3 L8,4.5 L.9,1.5Z"/><path d="M-.9,-1.5 L-8.5,3 L-8,4.5 L-.9,1.5Z"/><path d="M.9,6 L5,9.5 L4.5,10.5 L0,8.5 L-4.5,10.5 L-5,9.5 L-.9,6Z"/><path d="M0,5 L.5,5 L.6,10 L0,11.5 L-.6,10 L-.5,5Z"/><ellipse cx="-1.8" cy="5.5" rx=".7" ry="1.6"/><ellipse cx="1.8" cy="5.5" rx=".7" ry="1.6"/>`,
-  regional:`<path d="M0,-10 C1.2,-10 1.4,-7 1.4,-5 L1.4,5 L1,7 L.8,10 L0,11 L-.8,10 L-1,7 L-1.4,5 L-1.4,-5 C-1.4,-7 -1.2,-10 0,-10Z"/><rect x="-11" y="-2" width="22" height="2.2" rx=".5"/><rect x="-7" y="-5.5" width="2.5" height="5" rx=".6"/><rect x="4.5" y="-5.5" width="2.5" height="5" rx=".6"/><path d="M-.5,7 L.5,7 L.6,11 L0,12.5 L-.6,11Z"/><line x1="-4" y1="12" x2="4" y2="12" stroke-width="1.5" stroke-linecap="round"/>`,
-  ga:`<path d="M0,-11 C1.6,-11 2,-9 2,-7 L2,-3 L12.5,-3.5 L12,-1 L2,-1 L1.5,5 L1,7 L5.5,8 L5,10 L.8,8.5 L.5,10.5 L0,11.5 L-.5,10.5 L-.8,8.5 L-5,10 L-5.5,8 L-1,7 L-1.5,5 L-2,-1 L-12,-1 L-12.5,-3.5 L-2,-3 C-2,-9 -1.6,-11 0,-11Z"/>`,
-  military:`<path d="M0,-13 C2,-11.5 2.8,-8 2.8,-5 L3.2,-3 L12,4.5 L11.5,7 L3,2 L3,5.5 L6.5,8.5 L6,10.5 L2,8 L1.5,10.5 L0,11 L-1.5,10.5 L-2,8 L-6,10.5 L-6.5,8.5 L-3,5.5 L-3,2 L-11.5,7 L-12,4.5 L-3.2,-3 C-2.8,-8 -2,-11.5 0,-13Z"/>`,
-  helicopter:`<path d="M0,-3.5 C2.5,-3.5 3,0 3,2 C3,4.5 1.5,5.5 0,5.5 C-1.5,5.5 -3,4.5 -3,2 C-3,0 -2.5,-3.5 0,-3.5Z"/><line x1="0" y1="5.5" x2="0" y2="11" stroke-width="1.8" stroke-linecap="round"/><line x1="-3.5" y1="5" x2="-3.5" y2="6.5" stroke-width=".6" opacity=".5"/><line x1="3.5" y1="5" x2="3.5" y2="6.5" stroke-width=".6" opacity=".5"/><line x1="-4.5" y1="6.5" x2="-2.5" y2="6.5" stroke-width=".6" opacity=".5"/><line x1="2.5" y1="6.5" x2="4.5" y2="6.5" stroke-width=".6" opacity=".5"/><line x1="-11" y1="-2" x2="11" y2="-2" stroke-width="1.2" stroke-linecap="round" opacity=".8"/><line x1="0" y1="-13" x2="0" y2="9" stroke-width="1.2" stroke-linecap="round" opacity=".8" transform="rotate(90,0,-2)"/><circle cx="0" cy="-2" r="1.2"/>`,
-};
-
-// Register SVG airplane icons with the MapLibre map
-async function registerAcIcons(mapRef){
-  const sz=48;
-  const promises=[];
-  for(const [cat, color] of Object.entries(CAT_COLORS)){
-    const paths=AC_SHAPES[cat]||AC_SHAPES.medium;
-    const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}" viewBox="-14 -14 28 28"><g fill="${color}" stroke="${color}">${paths}</g></svg>`;
-    promises.push(new Promise((resolve,reject)=>{
-      const img=new Image(sz,sz);
-      img.onload=()=>{
-        if(!mapRef.hasImage('ac-'+cat)) mapRef.addImage('ac-'+cat, img);
-        resolve();
-      };
-      img.onerror=reject;
-      img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
-    }));
-  }
-  await Promise.all(promises);
-}
-
-function getAltBand(alt){
-  const a=parseInt(alt)||0;
-  if(a<1000) return 'ground';
-  if(a<10000) return 'low';
-  if(a<25000) return 'mid';
-  if(a<35000) return 'high';
-  return 'upper';
-}
-
-// ============================================================================
-// INTERPOLATION ENGINE
-// ============================================================================
-const _interp = {
-  curr: new Map(),
-  update(pilots, ts){
-    this.curr.clear();
-    for(const p of pilots){
-      if(!p.latitude || !p.longitude) continue;
-      this.curr.set(p.callsign, {
-        lat:p.latitude, lon:p.longitude,
-        hdg:p.heading||0, gs:p.groundspeed||0,
-        alt:p.altitude||0, ts
-      });
-    }
-  },
-  getPosition(callsign, now){
-    const c = this.curr.get(callsign);
-    if(!c) return null;
-    if(c.gs < 10) return {lat:c.lat, lon:c.lon};
-    const elapsed = (now - c.ts) / 1000;
-    if(elapsed <= 0 || elapsed > 120) return {lat:c.lat, lon:c.lon};
-    const nmPerSec = c.gs / 3600;
-    const distNm = nmPerSec * elapsed;
-    const hdgRad = c.hdg * Math.PI / 180;
-    const dLat = (distNm/60) * Math.cos(hdgRad);
-    const dLon = (distNm/60) * Math.sin(hdgRad) / Math.cos(c.lat * Math.PI/180);
-    return {lat:c.lat+dLat, lon:c.lon+dLon};
-  }
-};
-
-// ============================================================================
-// STATE
-// ============================================================================
-let map = null;
-let pilots = [];
-let controllers = [];
-let prefiles = [];
-let batchData = null;
-let selectedPilot = null;
-let isDayMode = false;
-let networkFilter = 'all';
-let pollTimer = null;
-let isIdle = false;
-let interpTimer = null;
-let lastFetchTs = 0;
-let sidePanelTab = 'pilots';
-const layers = {atc:true, routes:true, weather:false, vectors:false, fir:false, sigmet:false};
-let atisVoice = null;
-
-// ============================================================================
-// FETCH
-// ============================================================================
-
-async function fetchBatch(mode){
-  try{
-    const url = CFG.PROXY + (mode==='full' ? CFG.BATCH_FULL : CFG.BATCH_PRI);
-    const r = await fetch(url);
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    return await r.json();
-  }catch(e){
-    console.warn('Batch fail, trying fallback:', e);
-    return await fetchFallback();
-  }
-}
-
-async function fetchFallback(){
-  try{
-    const url = CFG.PROXY + '/?url=' + encodeURIComponent('https://data.vatsim.net/v3/vatsim-data.json');
-    const r = await fetch(url);
-    if(!r.ok) return {vatsim:null};
-    const vatsim = await r.json();
-    return {vatsim, transceivers:null, ivao:null, poscon:null, _mode:'fallback'};
-  }catch(e){
-    console.error('Fallback fail:', e);
-    return {vatsim:null};
-  }
-}
-
-// ============================================================================
-// DATA NORMALIZATION
-// ============================================================================
-
-function normalizeVATSIM(p){
-  return {
-    callsign: p.callsign||'',
-    latitude: p.latitude,
-    longitude: p.longitude,
-    altitude: p.altitude||0,
-    groundspeed: p.groundspeed||0,
-    heading: p.heading||0,
-    transponder: p.transponder||'',
-    departure: p.flight_plan?.departure||'',
-    arrival: p.flight_plan?.arrival||'',
-    aircraft: p.flight_plan?.aircraft_short||p.flight_plan?.aircraft||'',
-    route: p.flight_plan?.route||'',
-    remarks: p.flight_plan?.remarks||'',
-    cruise_tas: p.flight_plan?.cruise_tas||'',
-    flight_rules: p.flight_plan?.flight_rules||'',
-    name: p.name||'',
-    cid: p.cid||'',
-    logon_time: p.logon_time||'',
-    _network: 'VATSIM'
-  };
-}
-
-function normalizeIVAO(p){
-  const lt = p.lastTrack||{};
-  return {
-    callsign: p.callsign||'',
-    latitude: lt.latitude||p.latitude||0,
-    longitude: lt.longitude||p.longitude||0,
-    altitude: lt.altitude||p.altitude||0,
-    groundspeed: lt.groundSpeed||p.groundSpeed||0,
-    heading: lt.heading||p.heading||0,
-    transponder: lt.transponder||'',
-    departure: p.flightPlan?.departureId||'',
-    arrival: p.flightPlan?.arrivalId||'',
-    aircraft: p.flightPlan?.aircraftId||'',
-    route: p.flightPlan?.route||'',
-    remarks: p.flightPlan?.remarks||'',
-    cruise_tas: '',
-    flight_rules: p.flightPlan?.flightRules||'',
-    name: '', cid: p.id||'',
-    logon_time: p.createdAt||'',
-    _network: 'IVAO'
-  };
-}
-
-function normalizePOSCON(f){
-  return {
-    callsign: f.callsign||'',
-    latitude: f.lat||f.latitude||0,
-    longitude: f.lon||f.longitude||0,
-    altitude: f.alt||f.altitude||0,
-    groundspeed: f.gs||f.groundSpeed||0,
-    heading: f.hdg||f.heading||0,
-    transponder: '',
-    departure: f.dep||f.departure||'',
-    arrival: f.arr||f.arrival||'',
-    aircraft: f.aircraft||'',
-    route: f.route||'',
-    remarks: '', cruise_tas:'', flight_rules:'',
-    name:'', cid:'',
-    logon_time:'',
-    _network: 'POSCON'
-  };
-}
-
-function getAllPilots(batch){
-  let all = [];
-  if(batch.vatsim?.pilots) all.push(...batch.vatsim.pilots.map(normalizeVATSIM));
-  if(batch.ivao?.clients?.pilots) all.push(...batch.ivao.clients.pilots.map(normalizeIVAO));
-  if(batch.poscon?.flights) all.push(...batch.poscon.flights.map(normalizePOSCON));
-  else if(Array.isArray(batch.poscon)) all.push(...batch.poscon.map(normalizePOSCON));
-
-  const f = networkFilter?.toUpperCase();
-  if(f==='VATSIM') return all.filter(p=>p._network==='VATSIM');
-  if(f==='IVAO') return all.filter(p=>p._network==='IVAO');
-  if(f==='POSCON') return all.filter(p=>p._network==='POSCON');
-  return all;
-}
-
-function getAllControllers(batch){
-  const ctrls = [];
-  if(batch.vatsim?.controllers){
-    batch.vatsim.controllers.forEach(c=>{
-      if(c.frequency && c.frequency !== '199.998'){
-        ctrls.push({
-          callsign:c.callsign||'', frequency:c.frequency||'',
-          latitude:c.latitude||0, longitude:c.longitude||0,
-          facility:c.facility||0, rating:c.rating||0,
-          text_atis:c.text_atis||[], name:c.name||'',
-          logon_time:c.logon_time||'', _network:'VATSIM'
-        });
-      }
-    });
-  }
-  if(batch.vatsim?.atis){
-    batch.vatsim.atis.forEach(c=>{
-      ctrls.push({
-        callsign:c.callsign||'', frequency:c.frequency||'',
-        latitude:c.latitude||0, longitude:c.longitude||0,
-        facility:c.facility||0, text_atis:c.text_atis||[],
-        name:c.name||'', _network:'VATSIM', _isAtis:true
-      });
-    });
-  }
-  if(batch.ivao?.clients?.atcs){
-    batch.ivao.clients.atcs.forEach(a=>{
-      ctrls.push({
-        callsign:a.callsign||'', frequency:a.atcSession?.frequency||'',
-        latitude:a.lastTrack?.latitude||0, longitude:a.lastTrack?.longitude||0,
-        facility:0, text_atis:a.atis?.lines||[],
-        name:'', _network:'IVAO'
-      });
-    });
-  }
-  return ctrls;
-}
-
-// ============================================================================
-// MAP INIT
-// ============================================================================
-
-function initMap(){
-  const style = isDayMode ? CFG.STYLE_LIGHT : CFG.STYLE_DARK;
-  map = new maplibregl.Map({
-    container: 'map',
-    style,
-    center: [15, 25],
-    zoom: 1.5,
-    pitch: 30,
-    bearing: 0,
-    antialias: true
-  });
-
-  map.on('style.load', ()=>{
-    map.setProjection({type: 'globe'});
-  });
-  map.on('load', onMapLoad);
-  map.on('mousemove', e=>{
-    el('f-coords').textContent = `${e.lngLat.lat.toFixed(2)}, ${e.lngLat.lng.toFixed(2)}`;
-  });
-  map.on('zoom', ()=>{
-    el('f-zoom').textContent = map.getZoom().toFixed(1);
-  });
-
-  // Map controls
-  el('zoomIn').onclick = ()=> map.zoomIn();
-  el('zoomOut').onclick = ()=> map.zoomOut();
-  el('resetView').onclick = ()=> map.flyTo({center:[15,25],zoom:1.5,pitch:30,bearing:0,duration:1200});
-}
-
-async function onMapLoad(){
-  await registerAcIcons(map);
-  addSources();
-  addLayers();
-  setupClickHandlers();
-  doUpdate();
-  startPolling();
-  startInterpolation();
-  hideLoader();
-  checkFirstVisit();
-}
-
-function addSources(){
-  // Pilot altitude bands
-  ['ground','low','mid','high','upper'].forEach(band=>{
-    map.addSource('p-'+band, {type:'geojson', data:{type:'FeatureCollection',features:[]}});
-  });
-  // ATC positions
-  map.addSource('atc', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
-  // ATC range circles
-  map.addSource('atc-range', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
-  // Route lines (selected flight)
-  map.addSource('route-line', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
-  // Speed vectors
-  map.addSource('vectors', {type:'geojson', data:{type:'FeatureCollection',features:[]}});
-}
-
-function addLayers(){
-  // Altitude band configs: higher bands = larger icons, more opacity, slight screen lift
-  const bandCfg = {
-    ground: { size:0.35, opacity:0.65, lift:0 },
-    low:    { size:0.50, opacity:0.75, lift:1 },
-    mid:    { size:0.65, opacity:0.85, lift:2 },
-    high:   { size:0.85, opacity:0.92, lift:4 },
-    upper:  { size:1.05, opacity:1.0,  lift:6 },
-  };
-
-  Object.entries(bandCfg).forEach(([band, cfg])=>{
-    map.addLayer({
-      id:'p-'+band, type:'symbol', source:'p-'+band,
-      layout:{
-        'icon-image': ['match', ['get','category'],
-          'heavy','ac-heavy', 'medium','ac-medium', 'lightjet','ac-lightjet',
-          'regional','ac-regional', 'ga','ac-ga', 'military','ac-military',
-          'helicopter','ac-helicopter', 'ac-medium'],
-        'icon-rotate': ['get','heading'],
-        'icon-size': ['interpolate',['linear'],['zoom'], 1,cfg.size, 4,cfg.size*1.4, 8,cfg.size*2.5],
-        'icon-rotation-alignment': 'map',
-        'icon-pitch-alignment': 'map',
-        'icon-allow-overlap': true,
-        'icon-ignore-placement': true,
-      },
-      paint:{
-        'icon-opacity': cfg.opacity,
-        'icon-translate': [0, -cfg.lift],
-      }
-    });
-  });
-
-  // ATC range circles (fill)
-  map.addLayer({
-    id:'atc-range', type:'fill', source:'atc-range',
-    paint:{
-      'fill-color': '#34d399',
-      'fill-opacity': 0.06
-    }
-  });
-
-  // ATC range circles (outline)
-  map.addLayer({
-    id:'atc-range-line', type:'line', source:'atc-range',
-    paint:{
-      'line-color': '#34d399',
-      'line-opacity': 0.3,
-      'line-width': 1,
-      'line-dasharray': [3,2]
-    }
-  });
-
-  // ATC dots
-  map.addLayer({
-    id:'atc-dots', type:'circle', source:'atc',
-    paint:{
-      'circle-radius': 4,
-      'circle-color': '#34d399',
-      'circle-opacity': 0.7,
-      'circle-stroke-width': 1.5,
-      'circle-stroke-color': '#34d39966',
-      'circle-blur': 0.5
-    }
-  });
-
-  // Route line (selected flight)
-  map.addLayer({
-    id:'route-line', type:'line', source:'route-line',
-    paint:{
-      'line-color': '#22d3ee',
-      'line-width': 2,
-      'line-opacity': 0.6,
-      'line-dasharray': [4,3]
-    },
-    layout:{'line-cap':'round','line-join':'round'}
-  });
-
-  // Speed vectors
-  map.addLayer({
-    id:'vectors', type:'line', source:'vectors',
-    paint:{
-      'line-color': '#fbbf24',
-      'line-width': 1.5,
-      'line-opacity': 0.5
-    },
-    layout:{'visibility':'none'}
-  });
-}
-
-async function reAddLayersAfterStyleChange(){
-  // After setStyle, sources, layers and images are gone. Re-add them.
-  if(!map.getSource('p-ground')){
-    await registerAcIcons(map);
-    addSources();
-    addLayers();
-    // Re-render with current data
-    if(pilots.length) renderPilotBands(pilots);
-    if(controllers.length) renderATC(controllers);
-    applyLayerVisibility();
-  }
-}
-
-// ============================================================================
-// RENDERING
-// ============================================================================
-
-function renderPilotBands(pilotList){
-  const bands = {ground:[], low:[], mid:[], high:[], upper:[]};
-  const now = Date.now();
-
-  pilotList.forEach(p=>{
-    if(!p.latitude || !p.longitude) return;
-
-    // Use interpolated position if available
-    const pos = _interp.getPosition(p.callsign, now);
-    const lat = pos ? pos.lat : p.latitude;
-    const lon = pos ? pos.lon : p.longitude;
-    const band = getAltBand(p.altitude);
-
-    bands[band].push({
-      type:'Feature',
-      geometry:{type:'Point', coordinates:[lon, lat]},
-      properties:{
-        callsign: p.callsign,
-        altitude: p.altitude||0,
-        groundspeed: p.groundspeed||0,
-        heading: p.heading||0,
-        departure: p.departure||'',
-        arrival: p.arrival||'',
-        aircraft: p.aircraft||'',
-        network: p._network||'VATSIM',
-        category: acCategory(p.aircraft),
-        band
-      }
-    });
-  });
-
-  Object.entries(bands).forEach(([band, features])=>{
-    const src = map.getSource('p-'+band);
-    if(src) src.setData({type:'FeatureCollection', features});
-  });
-}
-
-function renderATC(ctrlList){
-  if(!layers.atc){
-    const s1 = map.getSource('atc');
-    const s2 = map.getSource('atc-range');
-    if(s1) s1.setData({type:'FeatureCollection',features:[]});
-    if(s2) s2.setData({type:'FeatureCollection',features:[]});
-    return;
-  }
-
-  const dots = [];
-  const circles = [];
-
-  ctrlList.forEach(c=>{
-    if(!c.latitude || !c.longitude) return;
-    // ATC dot
-    dots.push({
-      type:'Feature',
-      geometry:{type:'Point', coordinates:[c.longitude, c.latitude]},
-      properties:{
-        callsign: c.callsign,
-        frequency: c.frequency||'',
-        facility: c.facility||0,
-        network: c._network||'VATSIM'
-      }
-    });
-
-    // Range circle based on facility type
-    const radius = getATCRadius(c.callsign, c.facility);
-    if(radius > 0){
-      circles.push(createCircleFeature(c.longitude, c.latitude, radius, {callsign:c.callsign}));
-    }
-  });
-
-  const src1 = map.getSource('atc');
-  const src2 = map.getSource('atc-range');
-  if(src1) src1.setData({type:'FeatureCollection', features:dots});
-  if(src2) src2.setData({type:'FeatureCollection', features:circles});
-}
-
-function getATCRadius(callsign, facility){
-  const cs = (callsign||'').toUpperCase();
-  if(cs.includes('_CTR') || cs.includes('_FSS') || facility >= 6) return 300;
-  if(cs.includes('_APP') || cs.includes('_DEP') || facility === 5) return 80;
-  if(cs.includes('_TWR') || facility === 4) return 30;
-  if(cs.includes('_GND') || cs.includes('_DEL') || facility <= 3) return 10;
-  return 50;
-}
-
-function createCircleFeature(lng, lat, radiusKm, props){
-  const coords = [];
-  const steps = 48;
-  for(let i=0; i<=steps; i++){
-    const angle = (i/steps) * 2 * Math.PI;
-    const dLat = (radiusKm/111.32) * Math.cos(angle);
-    const dLng = (radiusKm/111.32) * Math.sin(angle) / Math.cos(lat * Math.PI/180);
-    coords.push([lng+dLng, lat+dLat]);
-  }
-  return {type:'Feature', geometry:{type:'Polygon', coordinates:[coords]}, properties:props||{}};
-}
-
-function renderVectors(pilotList){
-  if(!layers.vectors){
-    const s = map.getSource('vectors');
-    if(s) s.setData({type:'FeatureCollection',features:[]});
-    if(map.getLayoutProperty) try{map.setLayoutProperty('vectors','visibility','none');}catch(e){}
-    return;
-  }
-  try{map.setLayoutProperty('vectors','visibility','visible');}catch(e){}
-
-  const features = [];
-  pilotList.forEach(p=>{
-    if(!p.latitude || !p.longitude || p.groundspeed < 50) return;
-    const hdgRad = (p.heading||0) * Math.PI / 180;
-    // Vector length proportional to speed (1 min of travel)
-    const distNm = (p.groundspeed / 60);
-    const dLat = (distNm/60) * Math.cos(hdgRad);
-    const dLon = (distNm/60) * Math.sin(hdgRad) / Math.cos(p.latitude * Math.PI/180);
-    features.push({
-      type:'Feature',
-      geometry:{type:'LineString', coordinates:[[p.longitude, p.latitude],[p.longitude+dLon, p.latitude+dLat]]},
-      properties:{callsign:p.callsign}
-    });
-  });
-  const s = map.getSource('vectors');
-  if(s) s.setData({type:'FeatureCollection', features});
-}
-
-// ============================================================================
-// CLICK HANDLERS
-// ============================================================================
-
-function setupClickHandlers(){
-  const pilotLayers = ['p-ground','p-low','p-mid','p-high','p-upper'];
-
-  // Change cursor on hover
-  pilotLayers.concat(['atc-dots']).forEach(layerId=>{
-    map.on('mouseenter', layerId, ()=>{ map.getCanvas().style.cursor='pointer'; });
-    map.on('mouseleave', layerId, ()=>{ map.getCanvas().style.cursor=''; });
-  });
-
-  // Click pilot
-  pilotLayers.forEach(layerId=>{
-    map.on('click', layerId, e=>{
-      if(!e.features || !e.features.length) return;
-      const props = e.features[0].properties;
-      const pilot = pilots.find(p=>p.callsign===props.callsign);
-      if(pilot) selectPilot(pilot);
-    });
-  });
-
-  // Click ATC
-  map.on('click', 'atc-dots', e=>{
-    if(!e.features || !e.features.length) return;
-    const props = e.features[0].properties;
-    const ctrl = controllers.find(c=>c.callsign===props.callsign);
-    if(ctrl) selectController(ctrl);
-  });
-}
-
-function selectPilot(pilot){
-  selectedPilot = pilot;
-  showInfoDrawer(pilot);
-  map.flyTo({center:[pilot.longitude, pilot.latitude], zoom:6, pitch:40, duration:1200});
-}
-
-function selectController(ctrl){
-  selectedPilot = null;
-  const d = el('infoDrawer');
-  d.classList.add('open');
-  el('id-callsign').textContent = ctrl.callsign + ' [ATC]';
-  setActiveTab('info');
-  el('id-body').innerHTML = `
-    <div class="id-grid">
-      <div class="id-row"><span class="id-lbl">Callsign</span><span class="id-val">${ctrl.callsign}</span></div>
-      <div class="id-row"><span class="id-lbl">Frequency</span><span class="id-val">${ctrl.frequency||'--'}</span></div>
-      <div class="id-row"><span class="id-lbl">Network</span><span class="id-val">${ctrl._network}</span></div>
-      <div class="id-row"><span class="id-lbl">Name</span><span class="id-val">${ctrl.name||'--'}</span></div>
+    <div class="setting-section">
+      <div class="setting-label">Performance</div>
+      <div class="setting-toggles">
+        <label class="tog"><input type="checkbox" id="togInterp" checked><span>Smooth interpolation (30fps)</span></label>
+        <label class="tog"><input type="checkbox" id="togAutoRotate"><span>Auto-rotate when idle</span></label>
+      </div>
     </div>
-    ${ctrl.text_atis && ctrl.text_atis.length ? `
-      <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--bdr)">
-        <div class="id-lbl" style="margin-bottom:4px">ATIS</div>
-        <div style="color:var(--t2);font-size:10px;line-height:1.5;font-family:monospace">${ctrl.text_atis.join('<br>')}</div>
-        <button onclick="speakATIS('${ctrl.text_atis.join(' ').replace(/'/g,"\\'")}')" style="margin-top:6px;padding:4px 10px;background:var(--acc);color:var(--bg);border:none;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600">&#x1F50A; Read ATIS</button>
+
+    <div class="setting-section">
+      <div class="setting-label">AIRAC Cycle</div>
+      <div class="setting-info" id="airacInfo">calculating...</div>
+    </div>
+
+    <div class="setting-section">
+      <div class="setting-label">About</div>
+      <div class="setting-info">
+        Virtual Flights 3D Globe by Pushstart Sims<br>
+        Real-time VATSIM, IVAO, POSCON tracking<br>
+        Weather from NOAA &amp; RainViewer
       </div>
-    ` : ''}
-  `;
-  if(ctrl.latitude && ctrl.longitude){
-    map.flyTo({center:[ctrl.longitude, ctrl.latitude], zoom:8, duration:1200});
+    </div>
+
+  </div>
+</div>
+
+<!-- Bottom status bar -->
+<footer class="foot">
+  <span id="footStatus">ready</span>
+  <span class="foot-sep">·</span>
+  <span id="footCoord">0.0, 0.0</span>
+  <span class="foot-sep">·</span>
+  <span id="footZoom">zoom 1.0</span>
+  <span class="foot-sep">·</span>
+  <span id="footUpdate">--</span>
+</footer>
+
+<!-- Three.js and friends from CDN -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
   }
 }
-
-// ============================================================================
-// INFO DRAWER
-// ============================================================================
-
-function showInfoDrawer(pilot){
-  const d = el('infoDrawer');
-  d.classList.add('open');
-  el('id-callsign').textContent = pilot.callsign + (pilot.aircraft ? ' ['+pilot.aircraft+']' : '');
-  setActiveTab('info');
-  updateInfoContent('info', pilot);
-}
-
-function setActiveTab(tabName){
-  document.querySelectorAll('.id-tab').forEach(t=>{
-    t.classList.toggle('active', t.dataset.tab===tabName);
-  });
-}
-
-function updateInfoContent(tab, pilot){
-  const body = el('id-body');
-  if(tab==='info'){
-    body.innerHTML = `<div class="id-grid">
-      <div class="id-row"><span class="id-lbl">Callsign</span><span class="id-val">${pilot.callsign}</span></div>
-      <div class="id-row"><span class="id-lbl">Aircraft</span><span class="id-val">${pilot.aircraft||'--'}</span></div>
-      <div class="id-row"><span class="id-lbl">Altitude</span><span class="id-val">${pilot.altitude ? 'FL'+Math.floor(pilot.altitude/100).toString().padStart(3,'0') : '--'}</span></div>
-      <div class="id-row"><span class="id-lbl">Speed</span><span class="id-val">${pilot.groundspeed||0} kt</span></div>
-      <div class="id-row"><span class="id-lbl">Heading</span><span class="id-val">${Math.floor(pilot.heading||0)}&deg;</span></div>
-      <div class="id-row"><span class="id-lbl">Squawk</span><span class="id-val">${pilot.transponder||'--'}</span></div>
-      <div class="id-row"><span class="id-lbl">From</span><span class="id-val">${pilot.departure||'--'}</span></div>
-      <div class="id-row"><span class="id-lbl">To</span><span class="id-val">${pilot.arrival||'--'}</span></div>
-      <div class="id-row"><span class="id-lbl">Network</span><span class="id-val">${pilot._network}</span></div>
-      <div class="id-row"><span class="id-lbl">Pilot</span><span class="id-val">${pilot.name||'--'} ${pilot.cid?'('+pilot.cid+')':''}</span></div>
-      <div class="id-row"><span class="id-lbl">Rules</span><span class="id-val">${pilot.flight_rules||'--'}</span></div>
-      <div class="id-row"><span class="id-lbl">Alt Band</span><span class="id-val">${getAltBand(pilot.altitude).toUpperCase()}</span></div>
-    </div>`;
-  } else if(tab==='route'){
-    body.innerHTML = `
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:12px">
-        <span style="color:var(--acc);font-weight:700;font-family:monospace">${pilot.departure||'????'}</span>
-        <span style="flex:1;height:1px;background:var(--bdr);position:relative">
-          <span style="position:absolute;top:-3px;left:50%;transform:translateX(-50%);font-size:8px;color:var(--t3)">&#9992;</span>
-        </span>
-        <span style="color:var(--acc);font-weight:700;font-family:monospace">${pilot.arrival||'????'}</span>
-      </div>
-      <div class="id-lbl" style="margin-bottom:4px">Route</div>
-      <div style="color:var(--t2);font-size:10px;line-height:1.5;font-family:monospace;word-break:break-all">${pilot.route||'No route filed'}</div>
-      <div class="id-lbl" style="margin-top:8px;margin-bottom:4px">TAS</div>
-      <div style="color:var(--t1);font-size:11px;font-family:monospace">${pilot.cruise_tas||'--'} kt</div>
-    `;
-  } else if(tab==='remarks'){
-    body.innerHTML = `
-      <div class="id-lbl" style="margin-bottom:4px">Flight Plan Remarks</div>
-      <div style="color:var(--t2);font-size:10px;line-height:1.5;font-family:monospace;word-break:break-all">${pilot.remarks||'No remarks'}</div>
-      <div class="id-lbl" style="margin-top:10px;margin-bottom:4px">Logon Time</div>
-      <div style="color:var(--t1);font-size:10px;font-family:monospace">${pilot.logon_time ? new Date(pilot.logon_time).toLocaleString() : '--'}</div>
-    `;
-  } else if(tab==='atc'){
-    // Find nearby ATC
-    const nearby = controllers.filter(c=>{
-      if(!c.latitude || !c.longitude || !pilot.latitude || !pilot.longitude) return false;
-      const d = Math.sqrt(Math.pow(c.latitude-pilot.latitude,2)+Math.pow(c.longitude-pilot.longitude,2));
-      return d < 5; // rough ~5 degrees
-    }).slice(0,10);
-    body.innerHTML = nearby.length ? nearby.map(c=>`
-      <div style="padding:4px 0;border-bottom:1px solid var(--bdr);font-size:10px;font-family:monospace;cursor:pointer" onclick="selectController(controllers.find(x=>x.callsign==='${c.callsign}'))">
-        <span style="color:var(--grn);font-weight:600">${c.callsign}</span>
-        <span style="color:var(--t3);margin-left:8px">${c.frequency||''}</span>
-      </div>
-    `).join('') : '<div style="color:var(--t3);font-size:10px">No nearby ATC found</div>';
-  }
-}
-
-// ============================================================================
-// ATIS TEXT-TO-SPEECH
-// ============================================================================
-
-function speakATIS(text){
-  if(!text) return;
-  if(atisVoice) speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.rate = 0.9;
-  u.pitch = 0.95;
-  const voices = speechSynthesis.getVoices();
-  const enVoice = voices.find(v=>v.lang.startsWith('en'));
-  if(enVoice) u.voice = enVoice;
-  atisVoice = u;
-  u.onend = ()=>{ atisVoice=null; };
-  speechSynthesis.speak(u);
-}
-// Make available globally for onclick
-window.speakATIS = speakATIS;
-window.selectController = (c)=>{ if(c) selectController(c); };
-
-// ============================================================================
-// SIDE PANEL
-// ============================================================================
-
-function updateSidePanel(){
-  const body = el('sp-body');
-  if(sidePanelTab==='pilots'){
-    const sorted = [...pilots].sort((a,b)=>(a.callsign||'').localeCompare(b.callsign||''));
-    body.innerHTML = sorted.slice(0,200).map(p=>`
-      <div class="ti${selectedPilot?.callsign===p.callsign?' active':''}" data-cs="${p.callsign}">
-        <span class="ti-call">${p.callsign}</span>
-        <span class="ti-info">
-          <span>${p.departure||'--'}&rarr;${p.arrival||'--'}</span>
-          <span>FL${Math.floor((p.altitude||0)/100).toString().padStart(3,'0')}</span>
-          <span>${p.groundspeed||0}kt</span>
-        </span>
-      </div>
-    `).join('');
-  } else {
-    const sorted = [...controllers].sort((a,b)=>(a.callsign||'').localeCompare(b.callsign||''));
-    body.innerHTML = sorted.slice(0,200).map(c=>`
-      <div class="ti" data-cs="${c.callsign}" data-type="atc">
-        <span class="ti-call">${c.callsign}</span>
-        <span class="ti-info">
-          <span>${c.frequency||'--'}</span>
-          <span>${c._network}</span>
-        </span>
-      </div>
-    `).join('');
-  }
-
-  // Click handlers
-  body.querySelectorAll('.ti').forEach(item=>{
-    item.addEventListener('click', ()=>{
-      const cs = item.dataset.cs;
-      if(item.dataset.type==='atc'){
-        const ctrl = controllers.find(c=>c.callsign===cs);
-        if(ctrl) selectController(ctrl);
-      } else {
-        const pilot = pilots.find(p=>p.callsign===cs);
-        if(pilot) selectPilot(pilot);
-      }
-    });
-  });
-}
-
-// ============================================================================
-// UPDATE CYCLE
-// ============================================================================
-
-async function doUpdate(mode){
-  try{
-    el('s-status').textContent = '...';
-    const batch = await fetchBatch(mode||'primary');
-    if(!batch || !batch.vatsim){ el('s-status').textContent = 'ERR'; el('f-status').textContent='Error'; return; }
-
-    batchData = batch;
-    pilots = getAllPilots(batch);
-    controllers = getAllControllers(batch);
-    prefiles = batch.vatsim?.prefiles || [];
-    lastFetchTs = Date.now();
-
-    // Feed interpolation
-    _interp.update(pilots, lastFetchTs);
-
-    // Render
-    renderPilotBands(pilots);
-    renderATC(controllers);
-    renderVectors(pilots);
-    updateStats();
-    updateSidePanel();
-
-    el('s-status').textContent = 'LIVE';
-    el('f-status').textContent = 'Connected';
-    el('f-time').textContent = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  }catch(e){
-    console.error('Update error:', e);
-    el('s-status').textContent = 'ERR';
-    el('f-status').textContent = 'Error: '+e.message;
-  }
-}
-
-function updateStats(){
-  el('s-pilots').textContent = pilots.length.toLocaleString();
-  el('s-atc').textContent = controllers.length.toLocaleString();
-}
-
-// ============================================================================
-// POLLING & INTERPOLATION
-// ============================================================================
-
-function startPolling(){
-  const tick = ()=>{
-    const hidden = document.hidden;
-    const interval = hidden ? 0 : (isIdle ? CFG.POLL_IDLE : CFG.POLL_ACTIVE);
-    if(interval > 0) doUpdate();
-    pollTimer = setTimeout(tick, interval || CFG.POLL_ACTIVE);
-  };
-  pollTimer = setTimeout(tick, CFG.POLL_ACTIVE);
-
-  document.addEventListener('visibilitychange', ()=>{
-    if(!document.hidden && Date.now()-lastFetchTs > CFG.POLL_ACTIVE){
-      doUpdate();
-    }
-  });
-
-  // Idle detection
-  let idleT;
-  const resetIdle = ()=>{ clearTimeout(idleT); isIdle=false; idleT=setTimeout(()=>{isIdle=true;},45000); };
-  document.addEventListener('mousemove', resetIdle);
-  document.addEventListener('keydown', resetIdle);
-  document.addEventListener('click', resetIdle);
-  document.addEventListener('touchstart', resetIdle);
-  resetIdle();
-}
-
-function startInterpolation(){
-  const ms = 1000 / CFG.INTERP_FPS;
-  interpTimer = setInterval(()=>{
-    if(!pilots.length || !map) return;
-    renderPilotBands(pilots);
-  }, ms);
-}
-
-// ============================================================================
-// THEME
-// ============================================================================
-
-function isLocalDaytime(){
-  const d = new Date(), mins = d.getHours()*60 + d.getMinutes();
-  return mins >= 390 && mins < 1110; // 6:30 AM to 6:30 PM
-}
-
-function initTheme(){
-  try{
-    const saved = localStorage.getItem('vf3d_theme');
-    if(saved==='day') isDayMode = true;
-    else if(saved==='night') isDayMode = false;
-    else isDayMode = isLocalDaytime();
-  }catch(e){ isDayMode = isLocalDaytime(); }
-  if(isDayMode) document.body.classList.add('day-mode');
-  el('theme-btn').textContent = isDayMode ? '\u2600\uFE0F' : '\uD83C\uDF19';
-}
-
-function toggleTheme(){
-  isDayMode = !isDayMode;
-  document.body.classList.toggle('day-mode', isDayMode);
-  el('theme-btn').textContent = isDayMode ? '\u2600\uFE0F' : '\uD83C\uDF19';
-  try{ localStorage.setItem('vf3d_theme', isDayMode?'day':'night'); }catch(e){}
-
-  const style = isDayMode ? CFG.STYLE_LIGHT : CFG.STYLE_DARK;
-  map.setStyle(style);
-  map.once('style.load', ()=>{
-    map.setProjection({type: 'globe'});
-    reAddLayersAfterStyleChange();
-  });
-}
-
-// ============================================================================
-// SEARCH
-// ============================================================================
-
-function setupSearch(){
-  const input = el('searchInput');
-  const results = el('searchResults');
-
-  input.addEventListener('input', ()=>{
-    const q = input.value.toLowerCase().trim();
-    if(q.length < 2){ results.classList.remove('active'); return; }
-
-    const pilotMatches = pilots.filter(p=>
-      p.callsign.toLowerCase().includes(q) ||
-      p.departure.toLowerCase().includes(q) ||
-      p.arrival.toLowerCase().includes(q) ||
-      (p.aircraft||'').toLowerCase().includes(q)
-    ).slice(0,8).map(p=>({type:'pilot', label:`${p.callsign} - ${p.departure||'--'} to ${p.arrival||'--'}`, data:p}));
-
-    const atcMatches = controllers.filter(c=>
-      c.callsign.toLowerCase().includes(q) ||
-      (c.frequency||'').includes(q)
-    ).slice(0,5).map(c=>({type:'atc', label:`${c.callsign} (${c.frequency||'--'})`, data:c}));
-
-    const all = [...pilotMatches, ...atcMatches];
-    if(!all.length){ results.classList.remove('active'); return; }
-
-    results.innerHTML = all.map((m,i)=>`
-      <div class="sr-item" data-idx="${i}">
-        <span style="color:${m.type==='atc'?'var(--grn)':'var(--acc)'};font-weight:600;font-family:monospace">${m.type==='atc'?'[ATC] ':''}</span>${m.label}
-      </div>
-    `).join('');
-    results.classList.add('active');
-
-    results.querySelectorAll('.sr-item').forEach((item,i)=>{
-      item.addEventListener('mousedown', (e)=>{
-        e.preventDefault(); // Prevent blur from closing dropdown
-        const match = all[i];
-        if(match.type==='pilot') selectPilot(match.data);
-        else selectController(match.data);
-        input.value = '';
-        results.classList.remove('active');
-      });
-    });
-  });
-
-  document.addEventListener('click', e=>{
-    if(!e.target.closest('.search-wrap')) results.classList.remove('active');
-  });
-}
-
-// ============================================================================
-// EVENT HANDLERS
-// ============================================================================
-
-function setupEvents(){
-  // Network filter
-  el('net-btn').addEventListener('click', ()=> el('net-menu').classList.toggle('open'));
-  document.querySelectorAll('#net-menu .dd-item').forEach(item=>{
-    item.addEventListener('click', ()=>{
-      networkFilter = item.dataset.net;
-      el('net-btn').textContent = item.dataset.net.toUpperCase();
-      document.querySelectorAll('#net-menu .dd-item').forEach(i=>i.classList.remove('active'));
-      item.classList.add('active');
-      el('net-menu').classList.remove('open');
-      // Re-render with filter
-      if(batchData){
-        pilots = getAllPilots(batchData);
-        controllers = getAllControllers(batchData);
-        renderPilotBands(pilots);
-        renderATC(controllers);
-        renderVectors(pilots);
-        updateStats();
-        updateSidePanel();
-      }
-    });
-  });
-
-  // Close dropdown on outside click
-  document.addEventListener('click', e=>{
-    if(!e.target.closest('.dd')) el('net-menu').classList.remove('open');
-  });
-
-  // Theme
-  el('theme-btn').addEventListener('click', toggleTheme);
-
-  // Traffic list
-  el('list-btn').addEventListener('click', ()=>{
-    el('sidePanel').classList.toggle('open');
-    updateSidePanel();
-  });
-  el('sp-close').addEventListener('click', ()=> el('sidePanel').classList.remove('open'));
-
-  // Side panel tabs
-  document.querySelectorAll('.sp-tab').forEach(tab=>{
-    tab.addEventListener('click', ()=>{
-      document.querySelectorAll('.sp-tab').forEach(t=>t.classList.remove('active'));
-      tab.classList.add('active');
-      sidePanelTab = tab.dataset.stab;
-      updateSidePanel();
-    });
-  });
-
-  // Info drawer tabs
-  document.querySelectorAll('.id-tab').forEach(tab=>{
-    tab.addEventListener('click', ()=>{
-      setActiveTab(tab.dataset.tab);
-      if(selectedPilot) updateInfoContent(tab.dataset.tab, selectedPilot);
-    });
-  });
-  el('id-close').addEventListener('click', ()=>{
-    el('infoDrawer').classList.remove('open');
-    selectedPilot = null;
-    // Clear route line
-    const s = map.getSource('route-line');
-    if(s) s.setData({type:'FeatureCollection',features:[]});
-  });
-
-  // Layer toggles
-  document.querySelectorAll('.layer-toggle').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const layer = btn.dataset.layer;
-      layers[layer] = !layers[layer];
-      btn.classList.toggle('active', layers[layer]);
-      applyLayerVisibility();
-      // Re-render affected layers
-      if(layer==='atc') renderATC(controllers);
-      if(layer==='vectors') renderVectors(pilots);
-    });
-  });
-
-  // Legend
-  el('legendBtn').addEventListener('click', ()=>{
-    el('legendPanel').classList.toggle('open');
-  });
-
-  // Welcome popup
-  el('popup-btn').addEventListener('click', ()=>{
-    el('overlay').classList.remove('show');
-    el('popup').classList.remove('show');
-    try{ localStorage.setItem('vf3d_visited','1'); }catch(e){}
-  });
-  el('overlay').addEventListener('click', ()=>{
-    el('overlay').classList.remove('show');
-    el('popup').classList.remove('show');
-    try{ localStorage.setItem('vf3d_visited','1'); }catch(e){}
-  });
-
-  // Keyboard shortcuts
-  document.addEventListener('keydown', e=>{
-    if(e.key==='Escape'){
-      el('infoDrawer').classList.remove('open');
-      el('sidePanel').classList.remove('open');
-      selectedPilot = null;
-    }
-  });
-}
-
-function applyLayerVisibility(){
-  // ATC layers
-  const atcVis = layers.atc ? 'visible' : 'none';
-  try{
-    map.setLayoutProperty('atc-dots','visibility',atcVis);
-    map.setLayoutProperty('atc-range','visibility',atcVis);
-    map.setLayoutProperty('atc-range-line','visibility',atcVis);
-  }catch(e){}
-
-  // Vectors
-  try{ map.setLayoutProperty('vectors','visibility',layers.vectors?'visible':'none'); }catch(e){}
-
-  // Route line
-  try{ map.setLayoutProperty('route-line','visibility',layers.routes?'visible':'none'); }catch(e){}
-}
-
-// ============================================================================
-// HELPERS
-// ============================================================================
-
-function el(id){ return document.getElementById(id); }
-
-function hideLoader(){
-  const loader = el('loader');
-  setTimeout(()=>{
-    loader.classList.add('fade');
-    setTimeout(()=>loader.remove(), 600);
-  }, 400);
-}
-
-function checkFirstVisit(){
-  try{
-    if(!localStorage.getItem('vf3d_visited')){
-      el('overlay').classList.add('show');
-      el('popup').classList.add('show');
-    }
-  }catch(e){}
-}
-
-// ============================================================================
-// INIT
-// ============================================================================
-
-document.addEventListener('DOMContentLoaded', ()=>{
-  initTheme();
-  initMap();
-  setupSearch();
-  setupEvents();
-});
-
-})();
 </script>
+
+<!-- Module loader: load files in correct order -->
+<script type="module">
+  import { initState } from './js/state.js';
+  import { initGlobe, renderLoop } from './js/globe.js';
+  import { initData, startPolling } from './js/data.js';
+  import { initAircraft } from './js/aircraft.js';
+  import { initAtc } from './js/atc.js';
+  import { initUI } from './js/ui.js';
+
+  // Boot sequence: state → globe (loads textures) → data → aircraft → ui
+  (async () => {
+    try {
+      const loading = document.getElementById('loadingText');
+      const bar = document.getElementById('loadingBar');
+
+      loading.textContent = 'initializing state...';
+      bar.style.width = '10%';
+      initState();
+
+      loading.textContent = 'building 3d globe...';
+      bar.style.width = '30%';
+      await initGlobe();
+
+      loading.textContent = 'setting up renderers...';
+      bar.style.width = '55%';
+      initAircraft();
+      initAtc();
+
+      loading.textContent = 'connecting to flight networks...';
+      bar.style.width = '75%';
+      initData();
+
+      loading.textContent = 'mounting UI...';
+      bar.style.width = '90%';
+      initUI();
+
+      loading.textContent = 'ready';
+      bar.style.width = '100%';
+
+      // Fade out loader and start everything
+      setTimeout(() => {
+        document.getElementById('loading').classList.add('hidden');
+        renderLoop();
+        startPolling();
+      }, 400);
+
+    } catch(err) {
+      console.error('boot error:', err);
+      document.getElementById('loadingText').textContent = 'error: ' + err.message;
+    }
+  })();
+</script>
+
 </body>
 </html>
